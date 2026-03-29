@@ -7,6 +7,8 @@ import os
 import sys
 from typing import Dict, List, Tuple
 
+from script_contract import relative_output_paths_for_json
+
 
 def fail(code: str, message: str, details: Dict[str, str] = None) -> None:
     payload = {"status": "error", "code": code, "message": message, "details": details or {}}
@@ -374,7 +376,17 @@ def action_normalize(args: argparse.Namespace) -> None:
     summary_path = os.path.join(args.output_dir, "summary_report.txt")
     write_summary(summary_path, len(gene_ids), len(sample_ids), len(metadata_rows), group_key)
     _ = sample_key
-    print(json.dumps({"status": "ok", "action": "normalize", "outputs": [normalized_path, pca_path, summary_path]}))
+    print(
+        json.dumps(
+            {
+                "status": "ok",
+                "action": "normalize",
+                "outputs": relative_output_paths_for_json(
+                    args.output_dir, normalized_path, pca_path, summary_path
+                ),
+            }
+        )
+    )
 
 
 def action_differential(args: argparse.Namespace) -> None:
@@ -398,7 +410,17 @@ def action_differential(args: argparse.Namespace) -> None:
 
     summary_path = os.path.join(args.output_dir, "summary_report.txt")
     write_summary(summary_path, len(gene_ids), len(sample_ids), len(metadata_rows), group_key)
-    print(json.dumps({"status": "ok", "action": "differential", "outputs": [differential_path, volcano_path, summary_path]}))
+    print(
+        json.dumps(
+            {
+                "status": "ok",
+                "action": "differential",
+                "outputs": relative_output_paths_for_json(
+                    args.output_dir, differential_path, volcano_path, summary_path
+                ),
+            }
+        )
+    )
 
 
 def main() -> None:
