@@ -102,6 +102,10 @@ export function EstablishedAnalysisPage() {
             >
               {isPickingFiles ? "Selecting..." : "Select Input Files"}
             </button>
+            <p className="file-picker-hint">
+              Select all required files in one go (for example matrix and metadata). Use Ctrl+click (Windows/Linux) or
+              Cmd+click (macOS) for multiple files if your file manager requires it.
+            </p>
             {state.selectedFiles.length ? (
               <ul>
                 {state.selectedFiles.map((file) => (

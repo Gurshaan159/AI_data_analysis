@@ -179,6 +179,10 @@ export function RunAnalysisPage() {
             >
               {isPickingFiles ? "Selecting Input Files..." : "Update Input Files"}
             </button>
+            <p className="file-picker-hint">
+              You can select multiple input files at once (e.g. matrix and metadata). Use Ctrl/Cmd+click in the file list if
+              needed.
+            </p>
             <button
               type="button"
               onClick={() => {

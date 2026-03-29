@@ -10,7 +10,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            commands::files::pick_input_files,
             commands::files::pick_output_folder,
             commands::files::validate_path_for_analysis,
             commands::workflow::list_registered_pipelines,

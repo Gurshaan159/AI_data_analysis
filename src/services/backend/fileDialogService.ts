@@ -1,16 +1,28 @@
-import { invokeTauri } from "@/services/backend/tauriClient";
+import { open } from "@tauri-apps/plugin-dialog";
 
-interface FileDialogResult {
-  paths: string[];
-}
+import { invokeTauri } from "@/services/backend/tauriClient";
 
 interface FolderDialogResult {
   path: string | null;
 }
 
+/**
+ * Multi-select file open. Uses the Tauri dialog plugin (not rfd from Rust) so GTK/Linux
+ * reliably allows selecting several files in one pass (matrix + metadata, etc.).
+ */
 export async function pickInputFilesFromBackend(): Promise<string[]> {
-  const result = await invokeTauri<FileDialogResult>("pick_input_files");
-  return result.paths;
+  const selected = await open({
+    multiple: true,
+    title: "Select input files",
+    filters: [
+      { name: "Tabular", extensions: ["tsv", "csv", "txt"] },
+      { name: "All files", extensions: ["*"] },
+    ],
+  });
+  if (selected === null) {
+    return [];
+  }
+  return Array.isArray(selected) ? selected : [selected];
 }
 
 export async function pickOutputFolderFromBackend(): Promise<string | null> {

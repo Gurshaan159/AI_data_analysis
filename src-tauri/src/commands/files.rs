@@ -4,12 +4,6 @@ use crate::services::path_validation;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PickFilesResponse {
-    pub paths: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct PickFolderResponse {
     pub path: Option<String>,
 }
@@ -19,18 +13,6 @@ pub struct PickFolderResponse {
 pub struct PathValidationResponse {
     pub is_valid: bool,
     pub reason: Option<String>,
-}
-
-#[tauri::command]
-pub fn pick_input_files() -> PickFilesResponse {
-    let paths = rfd::FileDialog::new()
-        .pick_files()
-        .unwrap_or_default()
-        .into_iter()
-        .map(|path| path.to_string_lossy().to_string())
-        .collect::<Vec<String>>();
-
-    PickFilesResponse { paths }
 }
 
 #[tauri::command]

@@ -7,6 +7,7 @@ import os
 import sys
 from typing import Dict, List, Tuple
 
+from matrix_headers import is_allowed_gene_identifier_header
 from script_contract import relative_output_paths_for_json
 
 
@@ -46,7 +47,18 @@ def read_matrix(path: str) -> Tuple[List[str], List[str], List[List[float]]]:
 
     header = rows[0]
     if len(header) < 3:
-        fail("matrix-invalid-shape", "Matrix must contain gene_id and at least two sample columns.")
+        fail(
+            "matrix-invalid-shape",
+            "Matrix must have a feature identifier column plus at least two sample columns.",
+        )
+
+    first_header = (header[0] or "").strip()
+    if not is_allowed_gene_identifier_header(first_header):
+        fail(
+            "matrix-identifier-header-unrecognized",
+            "First column header must be a recognized gene or feature identifier (e.g. gene_id, ensembl_id).",
+            {"header": first_header},
+        )
 
     sample_ids = [value.strip() for value in header[1:]]
     if any(not sample_id for sample_id in sample_ids):

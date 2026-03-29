@@ -283,3 +283,10 @@
   color: #3d4d67;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+
+.file-picker-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  color: #51627a;
+  max-width: 42rem;
+}
