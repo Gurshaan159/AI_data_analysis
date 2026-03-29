@@ -5,6 +5,8 @@ export type AIProviderId = "mock" | "lava";
 export interface LavaProviderConfig {
   baseUrl: string;
   apiKey: string | null;
+  chatCompletionsUrl: string;
+  model: string;
 }
 
 export interface AIProviderConfig {
@@ -18,6 +20,8 @@ export function getAIProviderConfig(): AIProviderConfig {
     lava: {
       baseUrl: appEnv.lavaApiBaseUrl,
       apiKey: appEnv.lavaApiKey,
+      chatCompletionsUrl: appEnv.lavaChatCompletionsUrl,
+      model: appEnv.lavaModel,
     },
   };
 }

@@ -21,7 +21,8 @@
     "test:unsupported-guidance": "npm exec --yes tsx tests/frontend/unsupportedGuidanceCoverage.tsx",
     "test:ai:smoke": "npm exec --yes tsx tests/frontend/assistedBrowserSmoke.tsx",
     "test:file-kinds": "npm exec --yes tsx tests/frontend/fileKindInference.ts",
-    "test:ai": "npm run test:intent && npm run test:planner && npm run test:summary && npm run test:trace && npm run test:approval-ui && npm run test:unsupported-guidance && npm run test:ai:smoke",
+    "test:lava": "npm exec --yes tsx tests/frontend/lavaProviderContract.ts",
+    "test:ai": "npm run test:intent && npm run test:planner && npm run test:summary && npm run test:trace && npm run test:approval-ui && npm run test:unsupported-guidance && npm run test:ai:smoke && npm run test:lava",
     "format": "prettier --write . && cargo fmt --manifest-path src-tauri/Cargo.toml --all",
     "format:check": "prettier --check . && cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check"
   },

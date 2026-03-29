@@ -132,7 +132,9 @@ export type UnsupportedReasonCode =
   | "missing-required-matrix-context"
   | "supported-pipelines-unavailable"
   | "invalid-provider-output-shape"
-  | "planner-policy-violation";
+  | "planner-policy-violation"
+  | "provider-not-configured"
+  | "provider-request-failed";
 
 export interface SupportedRecommendationResult {
   kind: "supported";
