@@ -15,7 +15,7 @@ use crate::services::script_runner::{
 use crate::shared::manifest::{
     ManifestExpectedArtifact, ManifestInputDescriptor, ValidatedRunManifest,
 };
-use crate::shared::run::RunPhase;
+use crate::shared::run::{build_completed_artifact_records, RunPhase};
 
 #[derive(Debug, Clone)]
 pub struct AdapterProgressEvent {
@@ -612,6 +612,13 @@ fn write_provenance(
     run_output_dir: &PathBuf,
     produced_files: Vec<PathBuf>,
 ) -> Result<(), AppError> {
+    let artifacts = build_completed_artifact_records(run_output_dir, &produced_files).map_err(
+        |error| {
+            AppError::CommandExecution(format!(
+                "failed to build structured artifact records for provenance: {error}"
+            ))
+        },
+    )?;
     let provenance_path = run_output_dir.join("run-provenance.json");
     let provenance_json = serde_json::to_string_pretty(&serde_json::json!({
         "runId": run_id,
@@ -625,6 +632,7 @@ fn write_provenance(
         })).collect::<Vec<_>>(),
         "outputDirectory": manifest.output.directory,
         "producedFiles": produced_files.iter().map(|path| path.to_string_lossy().to_string()).collect::<Vec<_>>(),
+        "artifacts": artifacts,
         "environment": manifest.environment
     }))
     .map_err(|error| AppError::CommandExecution(format!("failed to serialize run provenance: {error}")))?;

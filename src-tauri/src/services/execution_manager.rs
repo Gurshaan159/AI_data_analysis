@@ -261,7 +261,7 @@ pub fn cancel_run(run_id: &str) -> Result<bool, AppError> {
 mod tests {
     use std::collections::HashMap;
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::sync::{Arc, Mutex};
     use std::thread;
@@ -548,6 +548,51 @@ mod tests {
         events.iter().filter(|event| event.phase == phase).count()
     }
 
+    /// Scripted pipelines write `artifacts` in `run-provenance.json` (sorted relative paths, sizes).
+    fn assert_provenance_artifacts(
+        run_dir: &Path,
+        expected_relative_paths_sorted: &[&str],
+    ) {
+        let raw = fs::read_to_string(run_dir.join("run-provenance.json"))
+            .expect("run-provenance.json should be readable");
+        let value: serde_json::Value =
+            serde_json::from_str(&raw).expect("provenance should parse as JSON");
+        let artifacts = value
+            .get("artifacts")
+            .and_then(|v| v.as_array())
+            .expect("provenance should include artifacts array");
+        let mut paths: Vec<String> = artifacts
+            .iter()
+            .map(|entry| {
+                entry
+                    .get("relativePath")
+                    .and_then(|v| v.as_str())
+                    .expect("each artifact should have relativePath")
+                    .to_string()
+            })
+            .collect();
+        paths.sort();
+        let expected: Vec<String> = expected_relative_paths_sorted
+            .iter()
+            .map(|s| (*s).to_string())
+            .collect();
+        assert_eq!(paths, expected, "artifact relative paths (sorted)");
+        for entry in artifacts {
+            assert_eq!(
+                entry.get("exists").and_then(|v| v.as_bool()),
+                Some(true),
+                "snapshot should confirm each listed artifact existed"
+            );
+            assert!(
+                entry
+                    .get("sizeBytes")
+                    .and_then(|v| v.as_u64())
+                    .is_some(),
+                "each artifact should report sizeBytes"
+            );
+        }
+    }
+
     #[test]
     fn blocks_execution_when_manifest_preflight_fails() {
         let mut request = sample_request();
@@ -607,6 +652,16 @@ mod tests {
         assert!(run_dir.join("pca_plot.svg").exists());
         assert!(run_dir.join("summary_report.txt").exists());
         assert!(run_dir.join("differential_analysis.tsv").exists());
+        assert_provenance_artifacts(
+            &run_dir,
+            &[
+                "differential_analysis.tsv",
+                "normalized_matrix.tsv",
+                "pca_plot.svg",
+                "run-manifest.json",
+                "summary_report.txt",
+            ],
+        );
     }
 
     #[test]
@@ -661,6 +716,17 @@ mod tests {
         assert!(run_dir.join("differential_expression.tsv").exists());
         assert!(run_dir.join("volcano_plot.svg").exists());
         assert!(run_dir.join("summary_report.txt").exists());
+        assert_provenance_artifacts(
+            &run_dir,
+            &[
+                "differential_expression.tsv",
+                "normalized_matrix.tsv",
+                "pca_plot.svg",
+                "run-manifest.json",
+                "summary_report.txt",
+                "volcano_plot.svg",
+            ],
+        );
     }
 
     #[test]
