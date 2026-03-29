@@ -11,6 +11,34 @@ export interface SuggestedResource {
 
 export type SupportedPlannerPipelineId = "count-matrix-analysis-v1" | "bulk-rna-matrix-downstream-v1";
 
+export interface PlannerIntentSignals {
+  dataCharacteristics: {
+    hasMatrixData: boolean;
+    hasMetadata: boolean;
+    expectsGroupComparison: boolean;
+    unsureAboutGrouping: boolean;
+    expectsDimensionalityReduction: boolean;
+    expectsNormalization: boolean;
+    expectsVisualization: boolean;
+  };
+  desiredOutputs: {
+    wantsPca: boolean;
+    wantsDifferentialExpression: boolean;
+    wantsVolcanoPlot: boolean;
+    wantsSummaryReport: boolean;
+  };
+  problemFraming: {
+    wantsBasicAnalysis: boolean;
+    wantsComparisonBetweenConditions: boolean;
+    unsureWhatAnalysisToRun: boolean;
+    wantsRecommendation: boolean;
+  };
+  constraints: {
+    ambiguousInputDescription: boolean;
+    unsupportedAnalysisRequested: boolean;
+  };
+}
+
 export type PlannerFunctionId =
   | "select_pipeline_count_matrix"
   | "select_pipeline_bulk_rna_matrix"

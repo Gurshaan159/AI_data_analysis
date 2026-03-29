@@ -1,8 +1,11 @@
 import { buildWorkflowFromPipeline } from "@/domain/workflow/workflowFactory";
+import { extractPlannerIntentSignals } from "@/services/ai/intent/intentExtractor";
+import { summarizeIntentSignals } from "@/services/ai/intent/intentTypes";
 import { getSupportedPlannerPipelineIds } from "@/services/ai/planner/functionCatalog";
 import type {
   AIRecommendationResult,
   PipelineDefinition,
+  PlannerIntentSignals,
   PlannerExplanationEntry,
   PlannerFunctionCall,
   PlannerFunctionCatalogEntry,
@@ -24,10 +27,6 @@ export interface PlannerBoundaryRequest {
 
 function recommendationId(prefix: string): string {
   return `${prefix}-${Date.now()}`;
-}
-
-function normalizePrompt(prompt: string): string {
-  return prompt.trim().toLowerCase();
 }
 
 function buildFallbackResources(): SuggestedResource[] {
@@ -79,44 +78,16 @@ function buildUnsupportedResult(args: {
   };
 }
 
-function detectClosestPipeline(normalizedPrompt: string): SupportedPlannerPipelineId {
-  const bulkSignals = ["bulk", "volcano", "pca", "downstream", "condition"];
-  if (bulkSignals.some((signal) => normalizedPrompt.includes(signal))) {
+
+function choosePipelineFromIntent(intent: PlannerIntentSignals): SupportedPlannerPipelineId {
+  if (
+    intent.dataCharacteristics.expectsDimensionalityReduction ||
+    intent.desiredOutputs.wantsPca ||
+    intent.desiredOutputs.wantsVolcanoPlot
+  ) {
     return "bulk-rna-matrix-downstream-v1";
   }
   return "count-matrix-analysis-v1";
-}
-
-function chooseSupportedPipeline(normalizedPrompt: string): SupportedPlannerPipelineId {
-  const bulkSignals = ["bulk", "volcano", "pca", "downstream", "bulk rna"];
-  return bulkSignals.some((signal) => normalizedPrompt.includes(signal))
-    ? "bulk-rna-matrix-downstream-v1"
-    : "count-matrix-analysis-v1";
-}
-
-function includesUnsupportedIntent(normalizedPrompt: string): boolean {
-  const unsupportedSignals = [
-    "single cell",
-    "single-cell",
-    "scrna",
-    "chip",
-    "atac",
-    "methylation",
-    "metabolomics",
-    "protein folding",
-    "literature review",
-  ];
-  return unsupportedSignals.some((signal) => normalizedPrompt.includes(signal));
-}
-
-function hasMatrixContext(normalizedPrompt: string): boolean {
-  const matrixSignals = ["matrix", "counts", "count matrix", "gene-by-sample", "metadata"];
-  return matrixSignals.some((signal) => normalizedPrompt.includes(signal));
-}
-
-function hasInvalidGroupingIntent(normalizedPrompt: string): boolean {
-  const invalidGroupingSignals = ["no groups", "without groups", "single group", "ungrouped", "no condition labels"];
-  return invalidGroupingSignals.some((signal) => normalizedPrompt.includes(signal));
 }
 
 function pushCall(calls: PlannerFunctionCall[], call: PlannerFunctionCall): void {
@@ -142,10 +113,11 @@ function ensureFunctionAllowed(
 }
 
 export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecommendationResult | null {
-  const prompt = normalizePrompt(request.userPrompt);
-  if (!prompt) {
+  const intentExtraction = extractPlannerIntentSignals(request.userPrompt);
+  if (!intentExtraction.normalizedPrompt) {
     return null;
   }
+  const intent = intentExtraction.signals;
 
   const plannerFunctionCalls: PlannerFunctionCall[] = [];
   const supportedPipelineIds = new Set(getSupportedPlannerPipelineIds());
@@ -171,13 +143,13 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
     });
   }
 
-  if (includesUnsupportedIntent(prompt)) {
-    const closest = detectClosestPipeline(prompt);
+  if (intent.constraints.unsupportedAnalysisRequested) {
+    const closest = choosePipelineFromIntent(intent);
     pushCall(plannerFunctionCalls, {
       functionId: "detect_unsupported_request",
       arguments: {
         reasonCode: "outside-supported-universe",
-        reason: "Prompt asks for analysis families outside the bounded v1 planner scope.",
+        reason: "Intent extraction detected analysis families outside the bounded v1 planner scope.",
       },
     });
     pushCall(plannerFunctionCalls, {
@@ -195,30 +167,7 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
     });
   }
 
-  if (!hasMatrixContext(prompt)) {
-    const closest = detectClosestPipeline(prompt);
-    pushCall(plannerFunctionCalls, {
-      functionId: "detect_unsupported_request",
-      arguments: {
-        reasonCode: "missing-required-matrix-context",
-        reason: "Prompt does not provide matrix-first context required by supported v1 pipelines.",
-      },
-    });
-    pushCall(plannerFunctionCalls, {
-      functionId: "suggest_closest_supported_workflow",
-      arguments: { pipelineId: closest },
-    });
-    return buildUnsupportedResult({
-      providerLabel: request.providerLabel,
-      summary: "The prompt is missing required matrix-analysis context.",
-      reason: "Include matrix + metadata context so the planner can map to a supported v1 workflow.",
-      reasonCode: "missing-required-matrix-context",
-      closestSupportedPipelineId: closest,
-      plannerFunctionCalls,
-    });
-  }
-
-  const chosenPipelineId = chooseSupportedPipeline(prompt);
+  const chosenPipelineId = choosePipelineFromIntent(intent);
   const pipeline = supportedPipelines.find((item) => item.id === chosenPipelineId);
   if (!pipeline) {
     pushCall(plannerFunctionCalls, {
@@ -233,7 +182,7 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
       summary: "Supported pipeline not currently available.",
       reason: `The planner selected ${chosenPipelineId}, but it is not present in available registry context.`,
       reasonCode: "supported-pipelines-unavailable",
-      closestSupportedPipelineId: detectClosestPipeline(prompt),
+      closestSupportedPipelineId: choosePipelineFromIntent(intent),
       plannerFunctionCalls,
     });
   }
@@ -288,7 +237,7 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
     pushCall(plannerFunctionCalls, { functionId: "add_volcano_plot_step", arguments: { stepId: "bulk-matrix-model" } });
   }
 
-  const invalidGroupingIntent = hasInvalidGroupingIntent(prompt);
+  const invalidGroupingIntent = intent.dataCharacteristics.unsureAboutGrouping;
   const differentialStepIndex = steps.findIndex((step) => step.stepId === differentialStepId);
   if (invalidGroupingIntent && differentialStepIndex >= 0) {
     pushCall(plannerFunctionCalls, {
@@ -314,7 +263,7 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
 
   const normalizationSlot = baseWorkflow.modificationSlots.find((slot) => slot.category === "normalization");
   const nextSelectedModifications = { ...baseWorkflow.selectedModifications };
-  if (normalizationSlot && (prompt.includes("composition bias") || prompt.includes("imbalanced") || prompt.includes("robust"))) {
+  if (normalizationSlot && intent.dataCharacteristics.expectsNormalization && chosenPipelineId === "bulk-rna-matrix-downstream-v1") {
     const previousValue = nextSelectedModifications[normalizationSlot.id];
     if (previousValue !== "tmm-like") {
       nextSelectedModifications[normalizationSlot.id] = "tmm-like";
@@ -350,7 +299,7 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
 
   pushCall(plannerFunctionCalls, {
     functionId: "explain_pipeline_choice",
-    arguments: { pipelineId: chosenPipelineId, reason: `Prompt mapped to ${pipeline.displayName}.` },
+    arguments: { pipelineId: chosenPipelineId, reason: `Intent signals mapped to ${pipeline.displayName}.` },
   });
   pushCall(plannerFunctionCalls, {
     functionId: "explain_added_step",
@@ -363,6 +312,15 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
       kind: "pipeline-choice",
       title: "Pipeline choice",
       detail: `Selected ${pipeline.displayName} from bounded v1 planner scope using prompt intent mapping.`,
+      sourceFunctionId: "explain_pipeline_choice",
+    },
+    {
+      id: "intent-signals",
+      kind: "parameter-assumption",
+      title: "Interpreted intent signals",
+      detail:
+        summarizeIntentSignals(intent).slice(0, 3).join(" ") ||
+        "No strong specialized signal detected; planner stayed within bounded matrix-first defaults.",
       sourceFunctionId: "explain_pipeline_choice",
     },
     {
@@ -396,6 +354,9 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
   }
 
   const warnings: string[] = [];
+  if (intent.constraints.ambiguousInputDescription) {
+    warnings.push("Input description is ambiguous; planner assumed matrix + metadata inputs for the recommended bounded workflow.");
+  }
   if (invalidGroupingIntent) {
     warnings.push("Differential expression was skipped until grouping metadata is valid.");
   }
@@ -425,6 +386,7 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
     warnings,
     assumptions: [
       "Planner is constrained to count-matrix-analysis-v1 and bulk-rna-matrix-downstream-v1.",
+      "Prompt interpretation is performed through deterministic intent signal extraction before planning decisions.",
       `Planner output generated through ${request.providerLabel} provider boundary.`,
     ],
     suggestedResources: [
