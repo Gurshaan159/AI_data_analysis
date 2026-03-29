@@ -207,8 +207,88 @@ function runUnsupportedSmokeScenario(): ScenarioResult {
   };
 }
 
+function runSparseUnsupportedSmokeScenario(): ScenarioResult {
+  const pipelines = getPipelineRegistry();
+  const functionCatalog = buildPlannerFunctionCatalog(pipelines);
+  const recommendation = planWithBoundedCatalog({
+    userPrompt: "Need single-cell clustering and marker genes from droplet data.",
+    availablePipelines: pipelines,
+    functionCatalog,
+    providerLabel: "mock",
+  });
+  if (!recommendation || recommendation.kind !== "unsupported") {
+    return {
+      name: "Assisted sparse unsupported browser render",
+      pass: false,
+      detail: "failed to build unsupported recommendation fixture",
+    };
+  }
+
+  const summary = buildAiDecisionSummary(recommendation, pipelines);
+  if (summary.kind !== "unsupported") {
+    return {
+      name: "Assisted sparse unsupported browser render",
+      pass: false,
+      detail: "failed to build unsupported summary fixture",
+    };
+  }
+
+  const sparseSummary = {
+    ...summary,
+    closestSupportedWorkflowLabel: null,
+    fallbackResources: [],
+    nextStepSuggestions: [summary.nextStepSuggestions[0] ?? "Reframe to a supported workflow."],
+  };
+
+  const dom = setupDom();
+  const container = dom.window.document.getElementById("root");
+  if (!container) {
+    return {
+      name: "Assisted sparse unsupported browser render",
+      pass: false,
+      detail: "missing root container",
+    };
+  }
+
+  const root = createRoot(container);
+  act(() => {
+    root.render(
+      <StatusPanel title="Unsupported Request" tone="warning">
+        <UnsupportedDecisionPresentation summary={sparseSummary} />
+      </StatusPanel>,
+    );
+  });
+
+  const text = container.textContent ?? "";
+  const requiredTokens = [
+    "Unsupported Request",
+    sparseSummary.title,
+    sparseSummary.unsupportedSummary,
+    sparseSummary.unsupportedReasonDetail,
+    "What you can do next",
+    "Fallback resources",
+    sparseSummary.nextStepSuggestions[0],
+  ];
+  const missing = requiredTokens.filter((token) => !text.includes(token));
+  const hidesClosestWhenMissing = !text.includes("Closest supported workflow:");
+  const hasNoPlaceholderJunk = !text.includes("undefined") && !text.includes("null");
+
+  act(() => {
+    root.unmount();
+  });
+
+  const pass = missing.length === 0 && hidesClosestWhenMissing && hasNoPlaceholderJunk;
+  return {
+    name: "Assisted sparse unsupported browser render",
+    pass,
+    detail: pass
+      ? "sparse unsupported summary renders without broken placeholders"
+      : `missingTokens=[${missing.join("; ")}], closestHidden=${hidesClosestWhenMissing}, cleanText=${hasNoPlaceholderJunk}`,
+  };
+}
+
 function runAll() {
-  const results = [runSmokeScenario(), runUnsupportedSmokeScenario()];
+  const results = [runSmokeScenario(), runUnsupportedSmokeScenario(), runSparseUnsupportedSmokeScenario()];
   results.forEach(logScenarioResult);
   const failed = results.filter((result) => !result.pass);
   if (failed.length > 0) {
