@@ -13,6 +13,9 @@
     "lint": "npm run lint:ts && npm run lint:rust",
     "lint:ts": "eslint .",
     "lint:rust": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets",
+    "test:intent": "npm exec --yes tsx tests/frontend/intentExtractionCoverage.ts",
+    "test:planner": "npm exec --yes tsx tests/frontend/scenarioVerification.ts",
+    "test:ai": "npm run test:intent && npm run test:planner",
     "format": "prettier --write . && cargo fmt --manifest-path src-tauri/Cargo.toml --all",
     "format:check": "prettier --check . && cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check"
   },
