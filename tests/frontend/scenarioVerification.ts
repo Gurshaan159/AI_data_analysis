@@ -1,24 +1,12 @@
-import { buildWorkflowFromPipeline } from "@/domain/workflow/workflowFactory";
-import { buildRunRequestIfValid, validateSelectedFilesAgainstPipeline } from "@/domain/validation/validationService";
-import { getPipelineById, getPipelineRegistry } from "@/registry/pipelineRegistry";
+import { getPipelineRegistry } from "@/registry/pipelineRegistry";
+import { buildPlannerFunctionCatalog } from "@/services/ai/planner/functionCatalog";
+import { acceptProviderPlannerResult } from "@/services/ai/planner/resultAcceptance";
 import { recommendWorkflow } from "@/services/ai/recommendationService";
-import type { NormalizedWorkflow, PipelineId } from "@/shared/types";
 
 interface ScenarioResult {
   name: string;
   pass: boolean;
   detail: string;
-}
-
-function approvedWorkflow(pipelineId: PipelineId, workflow: NormalizedWorkflow | null) {
-  if (!workflow) {
-    return null;
-  }
-  return {
-    pipelineId,
-    approvedAtIso: "2026-03-28T12:00:00.000Z",
-    workflow,
-  };
 }
 
 function logScenarioResult(result: ScenarioResult) {
@@ -27,208 +15,220 @@ function logScenarioResult(result: ScenarioResult) {
   console.log(`${status} | ${result.name} | ${result.detail}`);
 }
 
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 async function runVerificationScenarios() {
-  const bulkPipeline = getPipelineById("bulk-rna-seq-v1");
-  const bulkWorkflow = buildWorkflowFromPipeline("bulk-rna-seq-v1");
-  const bulkFiles = [
-    { path: "/mock/sampleA_R1.fastq.gz", kind: "fastq" as const },
-    { path: "/mock/sampleA_R2.fastq.gz", kind: "fastq" as const },
-    { path: "/mock/sample_sheet.csv", kind: "metadata" as const },
-  ];
+  const availablePipelines = getPipelineRegistry();
+  const functionCatalog = buildPlannerFunctionCatalog(availablePipelines);
 
-  const scenario1 = buildRunRequestIfValid({
-    selectedMode: "established",
-    selectedPipelineId: "bulk-rna-seq-v1",
-    selectedPipeline: bulkPipeline ?? null,
-    selectedFiles: bulkFiles,
-    outputFolder: "/mock/output",
-    selectedModifications: {
-      "bulk-rna-reference-build": "grch38",
-      "bulk-rna-stringency": "standard",
-    },
-    approvedWorkflow: approvedWorkflow("bulk-rna-seq-v1", bulkWorkflow),
-    aiRecommendation: null,
-    aiRecommendationApproved: false,
-    executionMode: "mock-local",
+  const supportedRecommendation = await recommendWorkflow({
+    availablePipelines,
+    functionCatalog,
+    userPrompt: "I have a count matrix and metadata, and I want differential expression from condition groups.",
   });
+  const scenario1Acceptance = acceptProviderPlannerResult(supportedRecommendation as unknown, {
+    availablePipelines,
+    functionCatalog,
+    providerLabel: "mock",
+  });
+  const scenario1 =
+    supportedRecommendation?.kind === "supported" &&
+    supportedRecommendation.chosenPipelineId === "count-matrix-analysis-v1" &&
+    scenario1Acceptance.accepted;
   logScenarioResult({
-    name: "Scenario1 run request build",
-    pass: Boolean(scenario1.runRequest) && scenario1.validation.isValid,
-    detail: `errors=${scenario1.validation.errors.length}`,
+    name: "Scenario1 valid supported result passes runtime+policy validation",
+    pass: scenario1,
+    detail:
+      supportedRecommendation?.kind === "supported"
+        ? `pipeline=${supportedRecommendation.chosenPipelineId}, accepted=${scenario1Acceptance.accepted}`
+        : `kind=${supportedRecommendation?.kind ?? "null"}`,
   });
 
-  const scenario2NoPipeline = buildRunRequestIfValid({
-    selectedMode: "established",
-    selectedPipelineId: null,
-    selectedPipeline: null,
-    selectedFiles: [],
-    outputFolder: null,
-    selectedModifications: {},
-    approvedWorkflow: null,
-    aiRecommendation: null,
-    aiRecommendationApproved: false,
-    executionMode: "mock-local",
+  const unsupportedRecommendation = await recommendWorkflow({
+    availablePipelines,
+    functionCatalog,
+    userPrompt: "Need single-cell clustering and marker genes from droplet data.",
   });
+  const scenario2Acceptance = acceptProviderPlannerResult(unsupportedRecommendation as unknown, {
+    availablePipelines,
+    functionCatalog,
+    providerLabel: "mock",
+  });
+  const scenario2 =
+    unsupportedRecommendation?.kind === "unsupported" &&
+    Boolean(unsupportedRecommendation.summary) &&
+    scenario2Acceptance.accepted;
   logScenarioResult({
-    name: "Scenario2 no pipeline",
-    pass: scenario2NoPipeline.validation.errors.some((error) => error.code === "pipeline-missing"),
-    detail: "contains pipeline-missing",
+    name: "Scenario2 valid unsupported result passes runtime+policy validation",
+    pass: scenario2,
+    detail:
+      unsupportedRecommendation?.kind === "unsupported"
+        ? `reason=${unsupportedRecommendation.unsupportedReasonCode}, accepted=${scenario2Acceptance.accepted}`
+        : `kind=${unsupportedRecommendation?.kind ?? "null"}`,
   });
 
-  const scenario2NoFiles = buildRunRequestIfValid({
-    selectedMode: "established",
-    selectedPipelineId: "bulk-rna-seq-v1",
-    selectedPipeline: bulkPipeline ?? null,
-    selectedFiles: [],
-    outputFolder: "/mock/output",
-    selectedModifications: {},
-    approvedWorkflow: null,
-    aiRecommendation: null,
-    aiRecommendationApproved: false,
-    executionMode: "mock-local",
+  const malformedProviderResult = {
+    kind: "supported",
+    recommendationId: "broken-shape",
+    chosenPipelineId: "count-matrix-analysis-v1",
+  };
+  const malformedAcceptance = acceptProviderPlannerResult(malformedProviderResult, {
+    availablePipelines,
+    functionCatalog,
+    providerLabel: "mock",
   });
+  const scenario3 =
+    !malformedAcceptance.accepted &&
+    malformedAcceptance.failedStage === "runtime-schema" &&
+    malformedAcceptance.result.unsupportedReasonCode === "invalid-provider-output-shape";
   logScenarioResult({
-    name: "Scenario2 pipeline no files",
-    pass: scenario2NoFiles.validation.errors.some((error) => error.code === "files-missing"),
-    detail: "contains files-missing",
+    name: "Scenario3 malformed provider result fails runtime validation",
+    pass: scenario3,
+    detail: `accepted=${malformedAcceptance.accepted}, stage=${
+      malformedAcceptance.accepted ? "none" : malformedAcceptance.failedStage
+    }`,
   });
 
-  const mismatch = validateSelectedFilesAgainstPipeline([{ path: "/mock/matrix.mtx", kind: "matrix" }], bulkPipeline ?? null);
-  logScenarioResult({
-    name: "Scenario2 wrong file kinds",
-    pass: mismatch.errors.some((error) => error.code === "file-kind-mismatch"),
-    detail: "contains file-kind-mismatch",
-  });
-
-  const scenario2InvalidModification = buildRunRequestIfValid({
-    selectedMode: "established",
-    selectedPipelineId: "bulk-rna-seq-v1",
-    selectedPipeline: bulkPipeline ?? null,
-    selectedFiles: bulkFiles,
-    outputFolder: null,
-    selectedModifications: { "bulk-rna-reference-build": "invalid-option" },
-    approvedWorkflow: approvedWorkflow("bulk-rna-seq-v1", bulkWorkflow),
-    aiRecommendation: null,
-    aiRecommendationApproved: false,
-    executionMode: "mock-local",
-  });
-  logScenarioResult({
-    name: "Scenario2 missing output folder",
-    pass: scenario2InvalidModification.validation.errors.some((error) => error.code === "output-folder-missing"),
-    detail: "contains output-folder-missing",
-  });
-  logScenarioResult({
-    name: "Scenario2 invalid modification option",
-    pass: scenario2InvalidModification.validation.errors.some((error) => error.code === "invalid-modification-option"),
-    detail: "contains invalid-modification-option",
-  });
-
-  const scenario3Recommendation = await recommendWorkflow({
-    availablePipelines: getPipelineRegistry(),
-    userPrompt: "Need single cell clustering and marker discovery from expression matrix",
-  });
-  const supported = scenario3Recommendation?.kind === "supported";
-  logScenarioResult({
-    name: "Scenario3 supported recommendation type",
-    pass: supported,
-    detail: `kind=${scenario3Recommendation?.kind ?? "null"}`,
-  });
-
-  if (scenario3Recommendation?.kind === "supported") {
-    logScenarioResult({
-      name: "Scenario3 maps to registry",
-      pass: Boolean(getPipelineById(scenario3Recommendation.chosenPipelineId)),
-      detail: scenario3Recommendation.chosenPipelineId,
-    });
-    logScenarioResult({
-      name: "Scenario3 has typed changes",
-      pass: scenario3Recommendation.addedSteps.length > 0 && scenario3Recommendation.modifiedSteps.length > 0,
-      detail: `added=${scenario3Recommendation.addedSteps.length}, modified=${scenario3Recommendation.modifiedSteps.length}`,
-    });
-    logScenarioResult({
-      name: "Scenario3 explanations present",
-      pass: scenario3Recommendation.explanations.length > 0,
-      detail: `count=${scenario3Recommendation.explanations.length}`,
-    });
-
-    const aiPipeline = getPipelineById(scenario3Recommendation.chosenPipelineId);
-    const aiApprovedWorkflow = approvedWorkflow(scenario3Recommendation.chosenPipelineId, scenario3Recommendation.suggestedWorkflow);
-    const aiFiles = [
-      { path: "/mock/cells.mtx", kind: "matrix" as const },
-      { path: "/mock/cell_meta.csv", kind: "metadata" as const },
-    ];
-
-    const scenario3Gated = buildRunRequestIfValid({
-      selectedMode: "ai-assisted",
-      selectedPipelineId: scenario3Recommendation.chosenPipelineId,
-      selectedPipeline: aiPipeline ?? null,
-      selectedFiles: aiFiles,
-      outputFolder: "/mock/output",
-      selectedModifications: scenario3Recommendation.suggestedWorkflow.selectedModifications,
-      approvedWorkflow: aiApprovedWorkflow,
-      aiRecommendation: scenario3Recommendation,
-      aiRecommendationApproved: false,
-      executionMode: "mock-local",
-    });
-    logScenarioResult({
-      name: "Scenario3 approval gate blocks forward",
-      pass: scenario3Gated.validation.errors.some((error) => error.code === "ai-approval-missing"),
-      detail: "ai-approval-missing present",
-    });
-
-    const scenario3Approved = buildRunRequestIfValid({
-      selectedMode: "ai-assisted",
-      selectedPipelineId: scenario3Recommendation.chosenPipelineId,
-      selectedPipeline: aiPipeline ?? null,
-      selectedFiles: aiFiles,
-      outputFolder: "/mock/output",
-      selectedModifications: scenario3Recommendation.suggestedWorkflow.selectedModifications,
-      approvedWorkflow: aiApprovedWorkflow,
-      aiRecommendation: scenario3Recommendation,
-      aiRecommendationApproved: true,
-      executionMode: "mock-local",
-    });
-    logScenarioResult({
-      name: "Scenario3 run request after approval",
-      pass: Boolean(scenario3Approved.runRequest) && scenario3Approved.validation.isValid,
-      detail: `errors=${scenario3Approved.validation.errors.length}`,
-    });
+  const policyInvalid =
+    supportedRecommendation?.kind === "supported" ? clone(supportedRecommendation) : null;
+  if (policyInvalid && policyInvalid.kind === "supported") {
+    policyInvalid.chosenPipelineId = "scrna-seq-v1" as unknown as "count-matrix-analysis-v1";
+    policyInvalid.workflowProposal.pipelineId = "scrna-seq-v1" as unknown as never;
+    policyInvalid.suggestedWorkflow.pipelineId = "scrna-seq-v1" as unknown as never;
+    policyInvalid.approvalHandoff.selectedPipelineId = "scrna-seq-v1" as unknown as "count-matrix-analysis-v1";
+    policyInvalid.approvalHandoff.proposedWorkflow.pipelineId = "scrna-seq-v1" as unknown as never;
   }
-
-  const scenario4Recommendation = await recommendWorkflow({
-    availablePipelines: getPipelineRegistry(),
-    userPrompt: "Need methylation array and metabolomics-only support",
+  const policyInvalidAcceptance = acceptProviderPlannerResult(policyInvalid as unknown, {
+    availablePipelines,
+    functionCatalog,
+    providerLabel: "mock",
   });
-  const unsupported = scenario4Recommendation?.kind === "unsupported";
+  const scenario4 =
+    !policyInvalidAcceptance.accepted &&
+    policyInvalidAcceptance.failedStage === "policy" &&
+    policyInvalidAcceptance.result.unsupportedReasonCode === "planner-policy-violation";
   logScenarioResult({
-    name: "Scenario4 unsupported recommendation type",
-    pass: unsupported,
-    detail: `kind=${scenario4Recommendation?.kind ?? "null"}`,
+    name: "Scenario4 structurally valid but policy-invalid result is blocked",
+    pass: scenario4,
+    detail: `accepted=${policyInvalidAcceptance.accepted}, stage=${
+      policyInvalidAcceptance.accepted ? "none" : policyInvalidAcceptance.failedStage
+    }`,
   });
-  if (scenario4Recommendation?.kind === "unsupported") {
-    logScenarioResult({
-      name: "Scenario4 typed fallback resources",
-      pass: scenario4Recommendation.suggestedResources.length > 0,
-      detail: `resources=${scenario4Recommendation.suggestedResources.length}`,
-    });
-    const scenario4Blocked = buildRunRequestIfValid({
-      selectedMode: "ai-assisted",
-      selectedPipelineId: null,
-      selectedPipeline: null,
-      selectedFiles: [],
-      outputFolder: null,
-      selectedModifications: {},
-      approvedWorkflow: null,
-      aiRecommendation: scenario4Recommendation,
-      aiRecommendationApproved: false,
-      executionMode: "mock-local",
-    });
-    logScenarioResult({
-      name: "Scenario4 cannot proceed to run request",
-      pass: !scenario4Blocked.runRequest,
-      detail: `errors=${scenario4Blocked.validation.errors.length}`,
-    });
+
+  const unknownPipeline =
+    supportedRecommendation?.kind === "supported" ? clone(supportedRecommendation) : null;
+  if (unknownPipeline && unknownPipeline.kind === "supported") {
+    unknownPipeline.chosenPipelineId = "unknown-pipeline-v1" as unknown as "count-matrix-analysis-v1";
+    unknownPipeline.workflowProposal.pipelineId = "unknown-pipeline-v1" as unknown as never;
+    unknownPipeline.suggestedWorkflow.pipelineId = "unknown-pipeline-v1" as unknown as never;
+    unknownPipeline.approvalHandoff.selectedPipelineId = "unknown-pipeline-v1" as unknown as "count-matrix-analysis-v1";
+    unknownPipeline.approvalHandoff.proposedWorkflow.pipelineId = "unknown-pipeline-v1" as unknown as never;
   }
+  const unknownPipelineAcceptance = acceptProviderPlannerResult(unknownPipeline as unknown, {
+    availablePipelines,
+    functionCatalog,
+    providerLabel: "mock",
+  });
+  const scenario5 =
+    !unknownPipelineAcceptance.accepted &&
+    unknownPipelineAcceptance.failedStage === "runtime-schema" &&
+    unknownPipelineAcceptance.result.unsupportedReasonCode === "invalid-provider-output-shape";
+  logScenarioResult({
+    name: "Scenario5 supported result with unknown pipeline is rejected",
+    pass: scenario5,
+    detail: `accepted=${unknownPipelineAcceptance.accepted}, stage=${
+      unknownPipelineAcceptance.accepted ? "none" : unknownPipelineAcceptance.failedStage
+    }`,
+  });
+
+  const disallowedFunctionResult =
+    supportedRecommendation?.kind === "supported" ? clone(supportedRecommendation) : null;
+  if (disallowedFunctionResult && disallowedFunctionResult.kind === "supported") {
+    disallowedFunctionResult.plannerFunctionCalls.push(
+      {
+        functionId: "totally_disallowed_function",
+        arguments: {},
+      } as unknown as (typeof disallowedFunctionResult.plannerFunctionCalls)[number],
+    );
+  }
+  const disallowedFunctionAcceptance = acceptProviderPlannerResult(disallowedFunctionResult as unknown, {
+    availablePipelines,
+    functionCatalog,
+    providerLabel: "mock",
+  });
+  const scenario6 = !disallowedFunctionAcceptance.accepted && disallowedFunctionAcceptance.failedStage === "policy";
+  logScenarioResult({
+    name: "Scenario6 supported result with disallowed function IDs is rejected",
+    pass: scenario6,
+    detail: `accepted=${disallowedFunctionAcceptance.accepted}, stage=${
+      disallowedFunctionAcceptance.accepted ? "none" : disallowedFunctionAcceptance.failedStage
+    }`,
+  });
+
+  const scenario7Recommendation = await recommendWorkflow({
+    availablePipelines,
+    functionCatalog,
+    userPrompt: "Bulk RNA matrix with metadata and treatment/control groups; include PCA and DE.",
+  });
+  const pageDecoupled =
+    scenario7Recommendation !== null &&
+    !("accepted" in (scenario7Recommendation as unknown as Record<string, unknown>)) &&
+    !("failedStage" in (scenario7Recommendation as unknown as Record<string, unknown>)) &&
+    !("issues" in (scenario7Recommendation as unknown as Record<string, unknown>));
+  logScenarioResult({
+    name: "Scenario7 AI-assisted page remains decoupled from planner/provider internals",
+    pass: pageDecoupled,
+    detail: `shapeStable=${pageDecoupled}, kind=${scenario7Recommendation?.kind ?? "null"}`,
+  });
+
+  const lavaStyleUnsupported = {
+    kind: "unsupported",
+    recommendationId: "lava-future-1",
+    unsupportedReasonCode: "outside-supported-universe",
+    summary: "Lava future output fallback",
+    reason: "Lava provider intentionally returned bounded unsupported response.",
+    closestSupportedPipelineId: null,
+    plannerFunctionCalls: [
+      {
+        functionId: "detect_unsupported_request",
+        arguments: {
+          reasonCode: "outside-supported-universe",
+          reason: "External provider fallback",
+        },
+      },
+    ],
+    explanations: [
+      {
+        id: "lava-explain",
+        kind: "fallback",
+        title: "Lava fallback",
+        detail: "Structured unsupported response from future lava provider.",
+        sourceFunctionId: "detect_unsupported_request",
+      },
+    ],
+    warnings: [],
+    assumptions: [],
+    suggestedResources: [
+      {
+        id: "lava-note",
+        title: "Lava note",
+        description: "Valid unsupported payload shape.",
+        resourceType: "placeholder",
+      },
+    ],
+  };
+  const lavaAcceptance = acceptProviderPlannerResult(lavaStyleUnsupported, {
+    availablePipelines,
+    functionCatalog,
+    providerLabel: "lava",
+  });
+  logScenarioResult({
+    name: "Scenario8 future lava-style provider payload passes same validated boundary",
+    pass: lavaAcceptance.accepted && lavaAcceptance.result?.kind === "unsupported",
+    detail: `accepted=${lavaAcceptance.accepted}, kind=${lavaAcceptance.result?.kind ?? "null"}`,
+  });
 }
 
 void runVerificationScenarios();

@@ -20,6 +20,7 @@ export interface WorkflowStep {
   required: boolean;
   addedByAi: boolean;
   modifiedByAi: boolean;
+  skippedByAi: boolean;
   explanation: string;
   parameterChangeSummary: WorkflowParameterChange[];
   expectedOutputs: OutputKind[];
@@ -45,7 +46,7 @@ export interface ApprovedWorkflow {
 }
 
 export interface WorkflowDiagramModel {
-  nodes: Array<{ id: string; label: string; status: "ready" | "approved" | "modified" }>;
+  nodes: Array<{ id: string; label: string; status: "ready" | "approved" | "modified" | "skipped" }>;
   edges: Array<{ from: string; to: string }>;
 }
 
@@ -57,6 +58,7 @@ export function createWorkflowStepFromTemplate(template: WorkflowStepTemplate): 
     required: template.required,
     addedByAi: false,
     modifiedByAi: false,
+    skippedByAi: false,
     explanation: template.explanation,
     parameterChangeSummary: [],
     expectedOutputs: template.expectedOutputs,

@@ -25,8 +25,9 @@ export function AssistedAnalysisPage() {
     }
     setIsLoading(true);
     dispatch({ type: "set-ai-recommendation-status", status: "loading" });
+    const availablePipelines = getPipelineRegistry();
     const recommendation = await recommendWorkflow({
-      availablePipelines: getPipelineRegistry(),
+      availablePipelines,
       userPrompt: state.aiPrompt,
     });
     dispatch({ type: "set-ai-recommendation", recommendation });
@@ -37,7 +38,7 @@ export function AssistedAnalysisPage() {
         type: "select-pipeline",
         pipelineId: recommendation.chosenPipelineId,
       });
-      dispatch({ type: "set-workflow", workflow: recommendation.suggestedWorkflow });
+      dispatch({ type: "set-workflow", workflow: recommendation.workflowProposal });
       dispatch({ type: "set-ai-recommendation-approved", approved: false });
     } else if (recommendation?.kind === "unsupported") {
       dispatch({ type: "set-ai-recommendation-status", status: "unsupported" });
@@ -112,10 +113,12 @@ export function AssistedAnalysisPage() {
             </p>
             <ul>
               {state.aiRecommendation.explanations.map((explanation) => (
-                <li key={explanation}>{explanation}</li>
+                <li key={explanation.id}>
+                  <strong>{explanation.title}:</strong> {explanation.detail}
+                </li>
               ))}
             </ul>
-            <WorkflowDiagram steps={state.aiRecommendation.suggestedWorkflow.steps} isApproved={false} />
+            <WorkflowDiagram steps={state.aiRecommendation.workflowProposal.steps} isApproved={false} />
             <RecommendationAdjustments recommendation={state.aiRecommendation} />
             <label>
               <input
@@ -135,13 +138,24 @@ export function AssistedAnalysisPage() {
         <StatusPanel title="Unsupported Request" tone="warning">
           <p>{state.aiRecommendation.summary}</p>
           <p>{state.aiRecommendation.reason}</p>
+          {state.aiRecommendation.closestSupportedPipelineId ? (
+            <p>
+              <strong>Closest supported workflow:</strong> {state.aiRecommendation.closestSupportedPipelineId}
+            </p>
+          ) : null}
           <ul>
             {state.aiRecommendation.suggestedResources.map((suggestion) => (
               <li key={suggestion.id}>
-                <a href={suggestion.url} target="_blank" rel="noreferrer">
-                  {suggestion.title}
-                </a>{" "}
-                - {suggestion.citation}
+                <strong>{suggestion.title}</strong>: {suggestion.description}
+                {suggestion.url ? (
+                  <>
+                    {" "}
+                    <a href={suggestion.url} target="_blank" rel="noreferrer">
+                      link
+                    </a>
+                  </>
+                ) : null}
+                {suggestion.citation ? ` (${suggestion.citation})` : null}
               </li>
             ))}
           </ul>

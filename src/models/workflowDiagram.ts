@@ -8,7 +8,7 @@ export function buildWorkflowDiagram(
     nodes: steps.map((step) => ({
       id: step.stepId,
       label: step.displayLabel,
-      status: step.modifiedByAi ? "modified" : isApproved ? "approved" : "ready",
+      status: step.skippedByAi ? "skipped" : step.modifiedByAi ? "modified" : isApproved ? "approved" : "ready",
     })),
     edges: steps.slice(1).map((step, index) => ({
       from: steps[index].stepId,

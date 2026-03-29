@@ -212,6 +212,12 @@
   border-color: #9ec0ea;
 }
 
+.status-skipped {
+  background: #f9f3ff;
+  color: #5a2f8c;
+  border-color: #cab3ea;
+}
+
 .status-pending {
   background: #f8f9fc;
   color: #5a677d;
@@ -227,4 +233,10 @@
   background: #fff7e9;
   color: #7b5214;
   border-color: #e6c27f;
+}
+
+.change-skipped {
+  background: #f9f3ff;
+  color: #5a2f8c;
+  border-color: #cab3ea;
 }

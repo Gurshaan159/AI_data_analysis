@@ -5,7 +5,12 @@ interface RecommendationAdjustmentsProps {
 }
 
 export function RecommendationAdjustments({ recommendation }: RecommendationAdjustmentsProps) {
-  if (!recommendation.addedSteps.length && !recommendation.modifiedSteps.length && !recommendation.changedParameters.length) {
+  if (
+    !recommendation.addedSteps.length &&
+    !recommendation.modifiedSteps.length &&
+    !recommendation.skippedSteps.length &&
+    !recommendation.changedParameters.length
+  ) {
     return <p>No step or parameter adjustments suggested.</p>;
   }
 
@@ -20,6 +25,12 @@ export function RecommendationAdjustments({ recommendation }: RecommendationAdju
       {recommendation.addedSteps.map((step) => (
         <article key={step.stepId} className="adjustment-card">
           <h4>{step.displayLabel} (added)</h4>
+          <p>{step.explanation}</p>
+        </article>
+      ))}
+      {recommendation.skippedSteps.map((step) => (
+        <article key={step.stepId} className="adjustment-card">
+          <h4>{step.displayLabel} (skipped)</h4>
           <p>{step.explanation}</p>
         </article>
       ))}

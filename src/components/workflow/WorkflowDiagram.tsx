@@ -24,6 +24,7 @@ export function WorkflowDiagram({ steps, isApproved }: WorkflowDiagramProps) {
                 <span className={`status-pill status-${node.status}`}>{node.status}</span>
                 {step?.addedByAi ? <span className="status-pill change-added">added</span> : null}
                 {step?.modifiedByAi ? <span className="status-pill change-modified">modified</span> : null}
+                {step?.skippedByAi ? <span className="status-pill change-skipped">skipped</span> : null}
               </div>
               {step ? <p>{step.explanation}</p> : null}
             </article>
