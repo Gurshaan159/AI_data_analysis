@@ -17,7 +17,8 @@
     "test:planner": "npm exec --yes tsx tests/frontend/scenarioVerification.ts",
     "test:summary": "npm exec --yes tsx tests/frontend/decisionSummaryCoverage.ts",
     "test:approval-ui": "npm exec --yes tsx tests/frontend/approvalUiRenderingCoverage.tsx",
-    "test:ai": "npm run test:intent && npm run test:planner && npm run test:summary && npm run test:approval-ui",
+    "test:ai:smoke": "npm exec --yes tsx tests/frontend/assistedBrowserSmoke.tsx",
+    "test:ai": "npm run test:intent && npm run test:planner && npm run test:summary && npm run test:approval-ui && npm run test:ai:smoke",
     "format": "prettier --write . && cargo fmt --manifest-path src-tauri/Cargo.toml --all",
     "format:check": "prettier --check . && cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check"
   },
@@ -31,6 +32,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@tauri-apps/cli": "^2",
+    "@types/jsdom": "^28.0.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
@@ -39,6 +41,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "jsdom": "^29.0.1",
     "prettier": "^3.8.1",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.57.2",
