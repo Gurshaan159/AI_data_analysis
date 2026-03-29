@@ -5,7 +5,8 @@ import { RecommendationAdjustments } from "@/components/workflow/RecommendationA
 import { WorkflowDiagram } from "@/components/workflow/WorkflowDiagram";
 import { PageShell } from "@/components/ui/PageShell";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import { getPipelineRegistry } from "@/registry/pipelineRegistry";
+import { buildApprovedAiWorkflowHandoff } from "@/domain/ai/approvalHandoff";
+import { getPipelineById, getPipelineRegistry } from "@/registry/pipelineRegistry";
 import { recommendWorkflow } from "@/services/ai/recommendationService";
 import { useAppState } from "@/state/useAppState";
 
@@ -24,6 +25,7 @@ export function AssistedAnalysisPage() {
       return;
     }
     setIsLoading(true);
+    dispatch({ type: "set-backend-error", error: null });
     dispatch({ type: "set-ai-recommendation-status", status: "loading" });
     const availablePipelines = getPipelineRegistry();
     const recommendation = await recommendWorkflow({
@@ -34,11 +36,7 @@ export function AssistedAnalysisPage() {
 
     if (recommendation?.kind === "supported") {
       dispatch({ type: "set-ai-recommendation-status", status: "supported" });
-      dispatch({
-        type: "select-pipeline",
-        pipelineId: recommendation.chosenPipelineId,
-      });
-      dispatch({ type: "set-workflow", workflow: recommendation.workflowProposal });
+      dispatch({ type: "select-pipeline", pipelineId: null });
       dispatch({ type: "set-ai-recommendation-approved", approved: false });
     } else if (recommendation?.kind === "unsupported") {
       dispatch({ type: "set-ai-recommendation-status", status: "unsupported" });
@@ -55,7 +53,25 @@ export function AssistedAnalysisPage() {
     dispatch({ type: "set-ai-recommendation-status", status: "idle" });
     dispatch({ type: "select-pipeline", pipelineId: null });
     dispatch({ type: "set-ai-recommendation-approved", approved: false });
+    dispatch({ type: "set-backend-error", error: null });
   }
+
+  function approveRecommendationAndContinue() {
+    if (state.aiRecommendation?.kind !== "supported") {
+      return;
+    }
+    const handoff = buildApprovedAiWorkflowHandoff(state.aiRecommendation);
+    if (!handoff.ok) {
+      dispatch({ type: "set-backend-error", error: handoff.error });
+      return;
+    }
+    dispatch({ type: "set-backend-error", error: null });
+    dispatch({ type: "apply-ai-workflow-handoff", handoff: handoff.value });
+    dispatch({ type: "set-page", page: APP_PAGES.REVIEW_WORKFLOW });
+  }
+
+  const supportedRecommendation = state.aiRecommendation?.kind === "supported" ? state.aiRecommendation : null;
+  const recommendedPipeline = supportedRecommendation ? getPipelineById(supportedRecommendation.chosenPipelineId) : null;
 
   return (
     <PageShell
@@ -105,21 +121,21 @@ export function AssistedAnalysisPage() {
         </StatusPanel>
       ) : null}
 
-      {state.aiRecommendation?.kind === "supported" && state.selectedPipeline ? (
+      {supportedRecommendation && recommendedPipeline ? (
         <StatusPanel title="Recommended Supported Workflow" tone="success">
           <div className="stack">
             <p>
-              <strong>Pipeline:</strong> {state.selectedPipeline.displayName}
+              <strong>Pipeline:</strong> {recommendedPipeline.displayName}
             </p>
             <ul>
-              {state.aiRecommendation.explanations.map((explanation) => (
+              {supportedRecommendation.explanations.map((explanation) => (
                 <li key={explanation.id}>
                   <strong>{explanation.title}:</strong> {explanation.detail}
                 </li>
               ))}
             </ul>
-            <WorkflowDiagram steps={state.aiRecommendation.workflowProposal.steps} isApproved={false} />
-            <RecommendationAdjustments recommendation={state.aiRecommendation} />
+            <WorkflowDiagram steps={supportedRecommendation.workflowProposal.steps} isApproved={false} />
+            <RecommendationAdjustments recommendation={supportedRecommendation} />
             <label>
               <input
                 type="checkbox"
@@ -162,6 +178,12 @@ export function AssistedAnalysisPage() {
         </StatusPanel>
       ) : null}
 
+      {state.backendError ? (
+        <StatusPanel title="Approval Handoff Error" tone="warning">
+          <p>{state.backendError}</p>
+        </StatusPanel>
+      ) : null}
+
       <div className="button-row">
         <button type="button" onClick={() => dispatch({ type: "set-page", page: APP_PAGES.WELCOME })}>
           Back
@@ -171,10 +193,8 @@ export function AssistedAnalysisPage() {
         </button>
         <button
           type="button"
-          disabled={state.aiRecommendation?.kind !== "supported" || !state.selectedPipeline || !state.aiRecommendationApproved}
-          onClick={() => {
-            dispatch({ type: "set-page", page: APP_PAGES.REVIEW_WORKFLOW });
-          }}
+          disabled={!supportedRecommendation || !recommendedPipeline || !state.aiRecommendationApproved}
+          onClick={approveRecommendationAndContinue}
         >
           Approve Recommendation and Continue
         </button>

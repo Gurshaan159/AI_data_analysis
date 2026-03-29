@@ -25,6 +25,7 @@ const initialState: AppState = {
   aiRecommendationStatus: "idle",
   aiRecommendation: null,
   aiRecommendationApproved: false,
+  aiPlannerApprovalContext: null,
   approvedWorkflow: null,
   validation: null,
   runPreview: null,
@@ -57,6 +58,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         workflow,
         workflowApproval: { approved: false, approvedAtIso: null },
         aiRecommendationApproved: false,
+        aiPlannerApprovalContext: null,
         approvedWorkflow: null,
         validation: null,
         runPreview: buildRunPreview(action.pipelineId, state.selectedFiles.length, state.outputFolder),
@@ -92,6 +94,28 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         ...state,
         workflow: action.workflow,
       };
+    case "apply-ai-workflow-handoff": {
+      const selectedPipeline = getPipelineById(action.handoff.selectedPipelineId);
+      if (!selectedPipeline) {
+        return {
+          ...state,
+          backendError: `Planner handoff failed: pipeline '${action.handoff.selectedPipelineId}' is not registered.`,
+        };
+      }
+      return {
+        ...state,
+        selectedPipelineId: action.handoff.selectedPipelineId,
+        selectedPipeline,
+        selectedModifications: action.handoff.selectedModifications,
+        workflow: action.handoff.workflow,
+        workflowApproval: { approved: false, approvedAtIso: null },
+        aiRecommendationApproved: true,
+        aiPlannerApprovalContext: action.handoff.plannerContext,
+        approvedWorkflow: null,
+        validation: null,
+        runPreview: buildRunPreview(action.handoff.selectedPipelineId, state.selectedFiles.length, state.outputFolder),
+      };
+    }
     case "set-workflow-approved": {
       const approvedAtIso = action.approved ? new Date().toISOString() : null;
       return {
@@ -112,7 +136,11 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
     case "set-ai-recommendation-status":
       return { ...state, aiRecommendationStatus: action.status };
     case "set-ai-recommendation":
-      return { ...state, aiRecommendation: action.recommendation };
+      return {
+        ...state,
+        aiRecommendation: action.recommendation,
+        aiPlannerApprovalContext: null,
+      };
     case "set-ai-recommendation-approved":
       return { ...state, aiRecommendationApproved: action.approved };
     case "set-validation":

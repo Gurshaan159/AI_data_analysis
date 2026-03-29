@@ -8,6 +8,10 @@ import { useAppState } from "@/state/useAppState";
 export function ReviewWorkflowPage() {
   const { state, dispatch } = useAppState();
   const runRequestBuild = getRunRequestBuild(state);
+  const structuredWarnings = Array.from(
+    new Set([...(state.workflow?.warnings ?? []), ...(state.aiPlannerApprovalContext?.warnings ?? [])]),
+  );
+  const structuredAssumptions = state.aiPlannerApprovalContext?.assumptions ?? [];
 
   function approveWorkflow() {
     if (!state.workflow || !state.selectedPipeline) {
@@ -60,11 +64,14 @@ export function ReviewWorkflowPage() {
             </p>
           </StatusPanel>
 
-          {state.workflow.warnings.length ? (
+          {structuredWarnings.length || structuredAssumptions.length ? (
             <StatusPanel title="Warnings and Assumptions" tone="warning">
               <ul>
-                {state.workflow.warnings.map((warning) => (
+                {structuredWarnings.map((warning) => (
                   <li key={warning}>{warning}</li>
+                ))}
+                {structuredAssumptions.map((assumption) => (
+                  <li key={assumption}>{assumption}</li>
                 ))}
               </ul>
             </StatusPanel>

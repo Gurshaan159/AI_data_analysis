@@ -80,6 +80,25 @@ export interface PlannerApprovalHandoff {
   requiredUserActions: string[];
 }
 
+export interface PlannerApprovalContext {
+  recommendationId: string;
+  plannerFunctionCalls: PlannerFunctionCall[];
+  explanations: PlannerExplanationEntry[];
+  addedSteps: WorkflowStep[];
+  modifiedSteps: WorkflowStep[];
+  skippedSteps: WorkflowStep[];
+  changedParameters: WorkflowParameterChange[];
+  warnings: string[];
+  assumptions: string[];
+}
+
+export interface ApprovedAiWorkflowHandoff {
+  selectedPipelineId: SupportedPlannerPipelineId;
+  selectedModifications: Record<string, string>;
+  workflow: NormalizedWorkflow;
+  plannerContext: PlannerApprovalContext;
+}
+
 export type UnsupportedReasonCode =
   | "outside-supported-universe"
   | "missing-required-matrix-context"

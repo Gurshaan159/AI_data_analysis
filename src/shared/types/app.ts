@@ -1,5 +1,5 @@
 import type { AppPage } from "@/app/routes";
-import type { AIRecommendationResult, AIRecommendationStatus } from "@/shared/types/ai";
+import type { AIRecommendationResult, AIRecommendationStatus, PlannerApprovalContext } from "@/shared/types/ai";
 import type { PipelineDefinition, PipelineId } from "@/shared/types/pipeline";
 import type { RunPreview, RunProgressState, SelectedFile } from "@/shared/types/run";
 import type { ApprovedWorkflow, NormalizedWorkflow, WorkflowApproval } from "@/shared/types/workflow";
@@ -21,6 +21,7 @@ export interface AppState {
   aiRecommendationStatus: AIRecommendationStatus;
   aiRecommendation: AIRecommendationResult | null;
   aiRecommendationApproved: boolean;
+  aiPlannerApprovalContext: PlannerApprovalContext | null;
   approvedWorkflow: ApprovedWorkflow | null;
   validation: ValidationResult | null;
   runPreview: RunPreview | null;

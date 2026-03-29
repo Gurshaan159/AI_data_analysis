@@ -2,6 +2,7 @@ import { createContext, type Dispatch } from "react";
 
 import type { AppPage } from "@/app/routes";
 import type {
+  ApprovedAiWorkflowHandoff,
   AIRecommendationResult,
   AppMode,
   AppState,
@@ -23,6 +24,7 @@ export type AppAction =
   | { type: "set-ai-recommendation-status"; status: AppState["aiRecommendationStatus"] }
   | { type: "set-ai-recommendation"; recommendation: AIRecommendationResult | null }
   | { type: "set-ai-recommendation-approved"; approved: boolean }
+  | { type: "apply-ai-workflow-handoff"; handoff: ApprovedAiWorkflowHandoff }
   | { type: "set-validation"; validation: ValidationResult | null }
   | { type: "set-run-stage"; stage: AppState["runProgress"]["finalStatus"] }
   | { type: "set-run-id"; runId: string | null }
