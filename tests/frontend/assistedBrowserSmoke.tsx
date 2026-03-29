@@ -2,7 +2,10 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { JSDOM } from "jsdom";
 
-import { SupportedDecisionPresentation } from "@/components/workflow/AssistedDecisionPresentation";
+import {
+  SupportedDecisionPresentation,
+  UnsupportedDecisionPresentation,
+} from "@/components/workflow/AssistedDecisionPresentation";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { getPipelineRegistry } from "@/registry/pipelineRegistry";
 import { buildPlannerFunctionCatalog } from "@/services/ai/planner/functionCatalog";
@@ -121,14 +124,98 @@ function runSmokeScenario(): ScenarioResult {
   };
 }
 
+function runUnsupportedSmokeScenario(): ScenarioResult {
+  const pipelines = getPipelineRegistry();
+  const functionCatalog = buildPlannerFunctionCatalog(pipelines);
+  const recommendation = planWithBoundedCatalog({
+    userPrompt: "Need single-cell clustering and marker genes from droplet data.",
+    availablePipelines: pipelines,
+    functionCatalog,
+    providerLabel: "mock",
+  });
+  if (!recommendation || recommendation.kind !== "unsupported") {
+    return {
+      name: "Assisted unsupported browser render",
+      pass: false,
+      detail: "failed to build unsupported recommendation fixture",
+    };
+  }
+
+  const summary = buildAiDecisionSummary(recommendation, pipelines);
+  if (summary.kind !== "unsupported") {
+    return {
+      name: "Assisted unsupported browser render",
+      pass: false,
+      detail: "failed to build unsupported summary fixture",
+    };
+  }
+
+  const dom = setupDom();
+  const container = dom.window.document.getElementById("root");
+  if (!container) {
+    return {
+      name: "Assisted unsupported browser render",
+      pass: false,
+      detail: "missing root container",
+    };
+  }
+
+  const root = createRoot(container);
+  act(() => {
+    root.render(
+      <StatusPanel title="Unsupported Request" tone="warning">
+        <UnsupportedDecisionPresentation summary={summary} />
+      </StatusPanel>,
+    );
+  });
+
+  const text = container.textContent ?? "";
+  const requiredTokens = [
+    "Unsupported Request",
+    summary.title,
+    summary.unsupportedSummary,
+    summary.unsupportedReasonDetail,
+    "What you can do next",
+    "Fallback resources",
+  ];
+  const missing = requiredTokens.filter((token) => !text.includes(token));
+  const hasClosestWhenPresent = summary.closestSupportedWorkflowLabel
+    ? text.includes("Closest supported workflow:") && text.includes(summary.closestSupportedWorkflowLabel)
+    : true;
+
+  act(() => {
+    root.render(
+      <StatusPanel title="Unsupported Request" tone="warning">
+        <UnsupportedDecisionPresentation summary={{ ...summary, closestSupportedWorkflowLabel: null }} />
+      </StatusPanel>,
+    );
+  });
+  const textWithoutClosest = container.textContent ?? "";
+  const hidesClosestWhenMissing = !textWithoutClosest.includes("Closest supported workflow:");
+
+  act(() => {
+    root.unmount();
+  });
+
+  const pass = missing.length === 0 && hasClosestWhenPresent && hidesClosestWhenMissing;
+  return {
+    name: "Assisted unsupported browser render",
+    pass,
+    detail: pass
+      ? "unsupported summary and fallback guidance rendered in browser-like DOM"
+      : `missingTokens=[${missing.join("; ")}], closestPresent=${hasClosestWhenPresent}, closestHidden=${hidesClosestWhenMissing}`,
+  };
+}
+
 function runAll() {
-  const result = runSmokeScenario();
-  logScenarioResult(result);
-  if (!result.pass) {
-    throw new Error("FAILED SCENARIOS: 1/1");
+  const results = [runSmokeScenario(), runUnsupportedSmokeScenario()];
+  results.forEach(logScenarioResult);
+  const failed = results.filter((result) => !result.pass);
+  if (failed.length > 0) {
+    throw new Error(`FAILED SCENARIOS: ${failed.length}/${results.length}`);
   }
   // eslint-disable-next-line no-console
-  console.log("ALL SCENARIOS PASSED: 1/1");
+  console.log(`ALL SCENARIOS PASSED: ${results.length}/${results.length}`);
 }
 
 runAll();
