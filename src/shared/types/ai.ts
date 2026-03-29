@@ -166,5 +166,36 @@ export interface UnsupportedRecommendationResult {
   suggestedResources: SuggestedResource[];
 }
 
+export interface DecisionSummaryResourceItem {
+  title: string;
+  description: string;
+  url?: string;
+  citation?: string;
+}
+
+export interface SupportedDecisionSummary {
+  kind: "supported";
+  title: string;
+  recommendationSummary: string;
+  chosenPipelineLabel: string;
+  keyReasons: string[];
+  keyPlannedActions: string[];
+  assumptionsToReview: string[];
+  warningsToReview: string[];
+  approvalChecklist: string[];
+}
+
+export interface UnsupportedDecisionSummary {
+  kind: "unsupported";
+  title: string;
+  unsupportedSummary: string;
+  unsupportedReasonDetail: string;
+  closestSupportedWorkflowLabel: string | null;
+  nextStepSuggestions: string[];
+  fallbackResources: DecisionSummaryResourceItem[];
+}
+
+export type AIDecisionSummary = SupportedDecisionSummary | UnsupportedDecisionSummary;
+
 export type AIRecommendationResult = SupportedRecommendationResult | UnsupportedRecommendationResult;
 export type AIRecommendationStatus = "idle" | "loading" | "supported" | "unsupported" | "error";

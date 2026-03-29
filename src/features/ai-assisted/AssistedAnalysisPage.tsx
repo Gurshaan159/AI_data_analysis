@@ -6,8 +6,9 @@ import { WorkflowDiagram } from "@/components/workflow/WorkflowDiagram";
 import { PageShell } from "@/components/ui/PageShell";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { buildApprovedAiWorkflowHandoff } from "@/domain/ai/approvalHandoff";
-import { getPipelineById, getPipelineRegistry } from "@/registry/pipelineRegistry";
+import { getPipelineRegistry } from "@/registry/pipelineRegistry";
 import { recommendWorkflow } from "@/services/ai/recommendationService";
+import { buildAiDecisionSummary } from "@/services/ai/summary/decisionSummaryBuilder";
 import { useAppState } from "@/state/useAppState";
 
 const EXAMPLE_PROMPTS = [
@@ -70,8 +71,11 @@ export function AssistedAnalysisPage() {
     dispatch({ type: "set-page", page: APP_PAGES.REVIEW_WORKFLOW });
   }
 
+  const availablePipelines = getPipelineRegistry();
   const supportedRecommendation = state.aiRecommendation?.kind === "supported" ? state.aiRecommendation : null;
-  const recommendedPipeline = supportedRecommendation ? getPipelineById(supportedRecommendation.chosenPipelineId) : null;
+  const decisionSummary = state.aiRecommendation ? buildAiDecisionSummary(state.aiRecommendation, availablePipelines) : null;
+  const supportedSummary = decisionSummary?.kind === "supported" ? decisionSummary : null;
+  const unsupportedSummary = decisionSummary?.kind === "unsupported" ? decisionSummary : null;
 
   return (
     <PageShell
@@ -121,12 +125,66 @@ export function AssistedAnalysisPage() {
         </StatusPanel>
       ) : null}
 
-      {supportedRecommendation && recommendedPipeline ? (
+      {supportedRecommendation && supportedSummary ? (
         <StatusPanel title="Recommended Supported Workflow" tone="success">
           <div className="stack">
             <p>
-              <strong>Pipeline:</strong> {recommendedPipeline.displayName}
+              <strong>{supportedSummary.title}:</strong> {supportedSummary.recommendationSummary}
             </p>
+            <p>
+              <strong>Selected pipeline:</strong> {supportedSummary.chosenPipelineLabel}
+            </p>
+            {!!supportedSummary.keyReasons.length && (
+              <>
+                <strong>Why this was chosen</strong>
+                <ul>
+                  {supportedSummary.keyReasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {!!supportedSummary.keyPlannedActions.length && (
+              <>
+                <strong>What will run</strong>
+                <ul>
+                  {supportedSummary.keyPlannedActions.map((action) => (
+                    <li key={action}>{action}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {!!supportedSummary.assumptionsToReview.length && (
+              <>
+                <strong>Assumptions to review</strong>
+                <ul>
+                  {supportedSummary.assumptionsToReview.map((assumption) => (
+                    <li key={assumption}>{assumption}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {!!supportedSummary.warningsToReview.length && (
+              <>
+                <strong>Warnings to review</strong>
+                <ul>
+                  {supportedSummary.warningsToReview.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {!!supportedSummary.approvalChecklist.length && (
+              <>
+                <strong>Approval checklist</strong>
+                <ul>
+                  {supportedSummary.approvalChecklist.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <strong>Planner explanations</strong>
             <ul>
               {supportedRecommendation.explanations.map((explanation) => (
                 <li key={explanation.id}>
@@ -150,18 +208,27 @@ export function AssistedAnalysisPage() {
         </StatusPanel>
       ) : null}
 
-      {state.aiRecommendation?.kind === "unsupported" ? (
+      {state.aiRecommendation?.kind === "unsupported" && unsupportedSummary ? (
         <StatusPanel title="Unsupported Request" tone="warning">
-          <p>{state.aiRecommendation.summary}</p>
-          <p>{state.aiRecommendation.reason}</p>
-          {state.aiRecommendation.closestSupportedPipelineId ? (
+          <p>
+            <strong>{unsupportedSummary.title}:</strong> {unsupportedSummary.unsupportedSummary}
+          </p>
+          <p>{unsupportedSummary.unsupportedReasonDetail}</p>
+          {unsupportedSummary.closestSupportedWorkflowLabel ? (
             <p>
-              <strong>Closest supported workflow:</strong> {state.aiRecommendation.closestSupportedPipelineId}
+              <strong>Closest supported workflow:</strong> {unsupportedSummary.closestSupportedWorkflowLabel}
             </p>
           ) : null}
+          <strong>What you can do next</strong>
           <ul>
-            {state.aiRecommendation.suggestedResources.map((suggestion) => (
-              <li key={suggestion.id}>
+            {unsupportedSummary.nextStepSuggestions.map((suggestion) => (
+              <li key={suggestion}>{suggestion}</li>
+            ))}
+          </ul>
+          <strong>Fallback resources</strong>
+          <ul>
+            {unsupportedSummary.fallbackResources.map((suggestion) => (
+              <li key={`${suggestion.title}-${suggestion.description}`}>
                 <strong>{suggestion.title}</strong>: {suggestion.description}
                 {suggestion.url ? (
                   <>
@@ -193,7 +260,7 @@ export function AssistedAnalysisPage() {
         </button>
         <button
           type="button"
-          disabled={!supportedRecommendation || !recommendedPipeline || !state.aiRecommendationApproved}
+          disabled={!supportedRecommendation || !supportedSummary || !state.aiRecommendationApproved}
           onClick={approveRecommendationAndContinue}
         >
           Approve Recommendation and Continue
