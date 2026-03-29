@@ -1,9 +1,10 @@
 import { useState } from "react";
 
 import { APP_PAGES } from "@/app/routes";
-import { ApprovalChecklist } from "@/components/workflow/ApprovalChecklist";
-import { RecommendationAdjustments } from "@/components/workflow/RecommendationAdjustments";
-import { WorkflowDiagram } from "@/components/workflow/WorkflowDiagram";
+import {
+  SupportedDecisionPresentation,
+  UnsupportedDecisionPresentation,
+} from "@/components/workflow/AssistedDecisionPresentation";
 import { PageShell } from "@/components/ui/PageShell";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { buildApprovedAiWorkflowHandoff } from "@/domain/ai/approvalHandoff";
@@ -128,129 +129,18 @@ export function AssistedAnalysisPage() {
 
       {supportedRecommendation && supportedSummary ? (
         <StatusPanel title="Recommended Supported Workflow" tone="success">
-          <div className="stack">
-            <section className="summary-card">
-              <p>
-                <strong>{supportedSummary.title}:</strong> {supportedSummary.recommendationSummary}
-              </p>
-              <p>
-                <strong>Selected pipeline:</strong> {supportedSummary.chosenPipelineLabel}
-              </p>
-            </section>
-
-            <div className="approval-summary-grid">
-              <section className="summary-card">
-                <h4>Why this was chosen</h4>
-                <ul>
-                  {supportedSummary.keyReasons.map((reason) => (
-                    <li key={reason}>{reason}</li>
-                  ))}
-                </ul>
-              </section>
-              <section className="summary-card">
-                <h4>What will happen</h4>
-                <ul>
-                  {supportedSummary.keyPlannedActions.map((action) => (
-                    <li key={action}>{action}</li>
-                  ))}
-                </ul>
-              </section>
-            </div>
-
-            <div className="approval-summary-grid">
-              <section className="summary-card">
-                <h4>Assumptions</h4>
-                {supportedSummary.assumptionsToReview.length ? (
-                  <ul>
-                    {supportedSummary.assumptionsToReview.map((assumption) => (
-                      <li key={assumption}>{assumption}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No additional assumptions were introduced.</p>
-                )}
-              </section>
-              <section className="summary-card">
-                <h4>Warnings</h4>
-                {supportedSummary.warningsToReview.length ? (
-                  <ul>
-                    {supportedSummary.warningsToReview.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No blocking warnings detected.</p>
-                )}
-              </section>
-            </div>
-
-            <ApprovalChecklist items={supportedSummary.approvalChecklist} />
-
-            <section className="summary-card">
-              <h4>Planner explanations</h4>
-              <ul>
-                {supportedRecommendation.explanations.map((explanation) => (
-                  <li key={explanation.id}>
-                    <strong>{explanation.title}:</strong> {explanation.detail}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <WorkflowDiagram steps={supportedRecommendation.workflowProposal.steps} isApproved={false} />
-            <section className="summary-card">
-              <h4>Workflow changes to review</h4>
-              <p>Added, modified, and skipped steps are highlighted with tags.</p>
-              <RecommendationAdjustments recommendation={supportedRecommendation} />
-            </section>
-            <label>
-              <input
-                type="checkbox"
-                checked={state.aiRecommendationApproved}
-                onChange={(event) =>
-                  dispatch({ type: "set-ai-recommendation-approved", approved: event.currentTarget.checked })
-                }
-              />
-              I approve this AI recommendation for review.
-            </label>
-          </div>
+          <SupportedDecisionPresentation
+            summary={supportedSummary}
+            recommendation={supportedRecommendation}
+            approved={state.aiRecommendationApproved}
+            onApprovedChange={(approved) => dispatch({ type: "set-ai-recommendation-approved", approved })}
+          />
         </StatusPanel>
       ) : null}
 
       {state.aiRecommendation?.kind === "unsupported" && unsupportedSummary ? (
         <StatusPanel title="Unsupported Request" tone="warning">
-          <p>
-            <strong>{unsupportedSummary.title}:</strong> {unsupportedSummary.unsupportedSummary}
-          </p>
-          <p>{unsupportedSummary.unsupportedReasonDetail}</p>
-          {unsupportedSummary.closestSupportedWorkflowLabel ? (
-            <p>
-              <strong>Closest supported workflow:</strong> {unsupportedSummary.closestSupportedWorkflowLabel}
-            </p>
-          ) : null}
-          <strong>What you can do next</strong>
-          <ul>
-            {unsupportedSummary.nextStepSuggestions.map((suggestion) => (
-              <li key={suggestion}>{suggestion}</li>
-            ))}
-          </ul>
-          <strong>Fallback resources</strong>
-          <ul>
-            {unsupportedSummary.fallbackResources.map((suggestion) => (
-              <li key={`${suggestion.title}-${suggestion.description}`}>
-                <strong>{suggestion.title}</strong>: {suggestion.description}
-                {suggestion.url ? (
-                  <>
-                    {" "}
-                    <a href={suggestion.url} target="_blank" rel="noreferrer">
-                      link
-                    </a>
-                  </>
-                ) : null}
-                {suggestion.citation ? ` (${suggestion.citation})` : null}
-              </li>
-            ))}
-          </ul>
+          <UnsupportedDecisionPresentation summary={unsupportedSummary} />
         </StatusPanel>
       ) : null}
 

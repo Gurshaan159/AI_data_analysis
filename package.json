@@ -16,7 +16,8 @@
     "test:intent": "npm exec --yes tsx tests/frontend/intentExtractionCoverage.ts",
     "test:planner": "npm exec --yes tsx tests/frontend/scenarioVerification.ts",
     "test:summary": "npm exec --yes tsx tests/frontend/decisionSummaryCoverage.ts",
-    "test:ai": "npm run test:intent && npm run test:planner && npm run test:summary",
+    "test:approval-ui": "npm exec --yes tsx tests/frontend/approvalUiRenderingCoverage.tsx",
+    "test:ai": "npm run test:intent && npm run test:planner && npm run test:summary && npm run test:approval-ui",
     "format": "prettier --write . && cargo fmt --manifest-path src-tauri/Cargo.toml --all",
     "format:check": "prettier --check . && cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check"
   },
