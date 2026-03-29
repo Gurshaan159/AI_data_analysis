@@ -17,6 +17,12 @@ interface SummaryFixture {
   expectedPipelineLabelIncludes?: string;
   expectedReasonIncludes?: string;
   expectedActionIncludes?: string;
+  minKeyReasons?: number;
+  minPlannedActions?: number;
+  minWarnings?: number;
+  minAssumptions?: number;
+  requireNextStepGuidance?: boolean;
+  requireClosestSupportedLabel?: boolean;
 }
 
 function logScenarioResult(result: ScenarioResult): void {
@@ -43,6 +49,10 @@ const fixtures: SummaryFixture[] = [
     expectedKind: "supported",
     expectedPipelineLabelIncludes: "Count-Matrix",
     expectedActionIncludes: "Run",
+    minKeyReasons: 1,
+    minPlannedActions: 2,
+    minWarnings: 1,
+    minAssumptions: 1,
   },
   {
     name: "Supported bulk matrix recommendation produces clear summary",
@@ -50,12 +60,26 @@ const fixtures: SummaryFixture[] = [
     expectedKind: "supported",
     expectedPipelineLabelIncludes: "Bulk RNA-seq (Matrix Downstream)",
     expectedActionIncludes: "Run Bulk RNA Normalization and PCA.",
+    minKeyReasons: 1,
+    minPlannedActions: 2,
+    minWarnings: 1,
+    minAssumptions: 1,
+  },
+  {
+    name: "Supported ambiguous recommendation surfaces warning review content",
+    prompt: "I have my data, what analysis should I run?",
+    expectedKind: "supported",
+    expectedPipelineLabelIncludes: "Count-Matrix",
+    minWarnings: 1,
+    minAssumptions: 1,
   },
   {
     name: "Unsupported recommendation produces unsupported summary",
     prompt: "Need single-cell clustering and marker genes from droplet data.",
     expectedKind: "unsupported",
     expectedReasonIncludes: "supports only count-matrix and bulk-RNA matrix-downstream workflows",
+    requireNextStepGuidance: true,
+    requireClosestSupportedLabel: true,
   },
 ];
 
@@ -96,6 +120,34 @@ function runSummaryFixtures(): ScenarioResult[] {
         detail: `planned actions missing token '${fixture.expectedActionIncludes}'`,
       };
     }
+    if (summary.kind === "supported" && fixture.minKeyReasons && summary.keyReasons.length < fixture.minKeyReasons) {
+      return {
+        name: fixture.name,
+        pass: false,
+        detail: `expected at least ${fixture.minKeyReasons} key reasons, got ${summary.keyReasons.length}`,
+      };
+    }
+    if (summary.kind === "supported" && fixture.minPlannedActions && summary.keyPlannedActions.length < fixture.minPlannedActions) {
+      return {
+        name: fixture.name,
+        pass: false,
+        detail: `expected at least ${fixture.minPlannedActions} planned actions, got ${summary.keyPlannedActions.length}`,
+      };
+    }
+    if (summary.kind === "supported" && fixture.minWarnings && summary.warningsToReview.length < fixture.minWarnings) {
+      return {
+        name: fixture.name,
+        pass: false,
+        detail: `expected at least ${fixture.minWarnings} warnings, got ${summary.warningsToReview.length}`,
+      };
+    }
+    if (summary.kind === "supported" && fixture.minAssumptions && summary.assumptionsToReview.length < fixture.minAssumptions) {
+      return {
+        name: fixture.name,
+        pass: false,
+        detail: `expected at least ${fixture.minAssumptions} assumptions, got ${summary.assumptionsToReview.length}`,
+      };
+    }
     if (
       summary.kind === "unsupported" &&
       fixture.expectedReasonIncludes &&
@@ -105,6 +157,20 @@ function runSummaryFixtures(): ScenarioResult[] {
         name: fixture.name,
         pass: false,
         detail: `unsupported reason mismatch: ${summary.unsupportedReasonDetail}`,
+      };
+    }
+    if (summary.kind === "unsupported" && fixture.requireNextStepGuidance && summary.nextStepSuggestions.length === 0) {
+      return {
+        name: fixture.name,
+        pass: false,
+        detail: "expected next-step guidance, found none",
+      };
+    }
+    if (summary.kind === "unsupported" && fixture.requireClosestSupportedLabel && summary.closestSupportedWorkflowLabel === null) {
+      return {
+        name: fixture.name,
+        pass: false,
+        detail: "expected closest supported workflow label, found null",
       };
     }
     return {
