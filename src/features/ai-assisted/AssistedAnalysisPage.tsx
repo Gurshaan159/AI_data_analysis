@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { APP_PAGES } from "@/app/routes";
+import { ApprovalChecklist } from "@/components/workflow/ApprovalChecklist";
 import { RecommendationAdjustments } from "@/components/workflow/RecommendationAdjustments";
 import { WorkflowDiagram } from "@/components/workflow/WorkflowDiagram";
 import { PageShell } from "@/components/ui/PageShell";
@@ -128,72 +129,80 @@ export function AssistedAnalysisPage() {
       {supportedRecommendation && supportedSummary ? (
         <StatusPanel title="Recommended Supported Workflow" tone="success">
           <div className="stack">
-            <p>
-              <strong>{supportedSummary.title}:</strong> {supportedSummary.recommendationSummary}
-            </p>
-            <p>
-              <strong>Selected pipeline:</strong> {supportedSummary.chosenPipelineLabel}
-            </p>
-            {!!supportedSummary.keyReasons.length && (
-              <>
-                <strong>Why this was chosen</strong>
+            <section className="summary-card">
+              <p>
+                <strong>{supportedSummary.title}:</strong> {supportedSummary.recommendationSummary}
+              </p>
+              <p>
+                <strong>Selected pipeline:</strong> {supportedSummary.chosenPipelineLabel}
+              </p>
+            </section>
+
+            <div className="approval-summary-grid">
+              <section className="summary-card">
+                <h4>Why this was chosen</h4>
                 <ul>
                   {supportedSummary.keyReasons.map((reason) => (
                     <li key={reason}>{reason}</li>
                   ))}
                 </ul>
-              </>
-            )}
-            {!!supportedSummary.keyPlannedActions.length && (
-              <>
-                <strong>What will run</strong>
+              </section>
+              <section className="summary-card">
+                <h4>What will happen</h4>
                 <ul>
                   {supportedSummary.keyPlannedActions.map((action) => (
                     <li key={action}>{action}</li>
                   ))}
                 </ul>
-              </>
-            )}
-            {!!supportedSummary.assumptionsToReview.length && (
-              <>
-                <strong>Assumptions to review</strong>
-                <ul>
-                  {supportedSummary.assumptionsToReview.map((assumption) => (
-                    <li key={assumption}>{assumption}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {!!supportedSummary.warningsToReview.length && (
-              <>
-                <strong>Warnings to review</strong>
-                <ul>
-                  {supportedSummary.warningsToReview.map((warning) => (
-                    <li key={warning}>{warning}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {!!supportedSummary.approvalChecklist.length && (
-              <>
-                <strong>Approval checklist</strong>
-                <ul>
-                  {supportedSummary.approvalChecklist.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <strong>Planner explanations</strong>
-            <ul>
-              {supportedRecommendation.explanations.map((explanation) => (
-                <li key={explanation.id}>
-                  <strong>{explanation.title}:</strong> {explanation.detail}
-                </li>
-              ))}
-            </ul>
+              </section>
+            </div>
+
+            <div className="approval-summary-grid">
+              <section className="summary-card">
+                <h4>Assumptions</h4>
+                {supportedSummary.assumptionsToReview.length ? (
+                  <ul>
+                    {supportedSummary.assumptionsToReview.map((assumption) => (
+                      <li key={assumption}>{assumption}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No additional assumptions were introduced.</p>
+                )}
+              </section>
+              <section className="summary-card">
+                <h4>Warnings</h4>
+                {supportedSummary.warningsToReview.length ? (
+                  <ul>
+                    {supportedSummary.warningsToReview.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No blocking warnings detected.</p>
+                )}
+              </section>
+            </div>
+
+            <ApprovalChecklist items={supportedSummary.approvalChecklist} />
+
+            <section className="summary-card">
+              <h4>Planner explanations</h4>
+              <ul>
+                {supportedRecommendation.explanations.map((explanation) => (
+                  <li key={explanation.id}>
+                    <strong>{explanation.title}:</strong> {explanation.detail}
+                  </li>
+                ))}
+              </ul>
+            </section>
+
             <WorkflowDiagram steps={supportedRecommendation.workflowProposal.steps} isApproved={false} />
-            <RecommendationAdjustments recommendation={supportedRecommendation} />
+            <section className="summary-card">
+              <h4>Workflow changes to review</h4>
+              <p>Added, modified, and skipped steps are highlighted with tags.</p>
+              <RecommendationAdjustments recommendation={supportedRecommendation} />
+            </section>
             <label>
               <input
                 type="checkbox"

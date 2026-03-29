@@ -92,6 +92,12 @@
   background-color: #fafcff;
 }
 
+.approval-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.6rem;
+}
+
 .mode-grid,
 .pipeline-grid {
   display: grid;
@@ -167,6 +173,18 @@
   margin: 0;
 }
 
+.workflow-node-added {
+  border-left: 4px solid #9fd9b6;
+}
+
+.workflow-node-modified {
+  border-left: 4px solid #e6c27f;
+}
+
+.workflow-node-skipped {
+  border-left: 4px solid #cab3ea;
+}
+
 .workflow-index {
   width: 1.3rem;
   height: 1.3rem;
@@ -239,4 +257,29 @@
   background: #f9f3ff;
   color: #5a2f8c;
   border-color: #cab3ea;
+}
+
+.change-count-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.checklist-list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.checklist-marker {
+  color: #3d4d67;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }

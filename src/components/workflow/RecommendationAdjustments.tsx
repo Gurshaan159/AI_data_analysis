@@ -16,21 +16,39 @@ export function RecommendationAdjustments({ recommendation }: RecommendationAdju
 
   return (
     <section className="stack">
-      {recommendation.modifiedSteps.map((step) => (
+      <div className="change-count-row">
+        {!!recommendation.addedSteps.length && (
+          <span className="status-pill change-added">{recommendation.addedSteps.length} added</span>
+        )}
+        {!!recommendation.modifiedSteps.length && (
+          <span className="status-pill change-modified">{recommendation.modifiedSteps.length} modified</span>
+        )}
+        {!!recommendation.skippedSteps.length && (
+          <span className="status-pill change-skipped">{recommendation.skippedSteps.length} skipped</span>
+        )}
+      </div>
+
+      {recommendation.addedSteps.map((step) => (
         <article key={step.stepId} className="adjustment-card">
-          <h4>{step.displayLabel} (modified)</h4>
+          <h4>
+            <span className="status-pill change-added">added</span> {step.displayLabel}
+          </h4>
           <p>{step.explanation}</p>
         </article>
       ))}
-      {recommendation.addedSteps.map((step) => (
+      {recommendation.modifiedSteps.map((step) => (
         <article key={step.stepId} className="adjustment-card">
-          <h4>{step.displayLabel} (added)</h4>
+          <h4>
+            <span className="status-pill change-modified">modified</span> {step.displayLabel}
+          </h4>
           <p>{step.explanation}</p>
         </article>
       ))}
       {recommendation.skippedSteps.map((step) => (
         <article key={step.stepId} className="adjustment-card">
-          <h4>{step.displayLabel} (skipped)</h4>
+          <h4>
+            <span className="status-pill change-skipped">skipped</span> {step.displayLabel}
+          </h4>
           <p>{step.explanation}</p>
         </article>
       ))}
