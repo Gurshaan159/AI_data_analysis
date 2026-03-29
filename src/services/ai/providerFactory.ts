@@ -8,5 +8,5 @@ export function getAIProvider(): AIProvider {
   if (config.provider === "lava") {
     return new LavaAIProvider(config.lava);
   }
-  return new MockAIProvider(config.provider);
+  return new MockAIProvider();
 }

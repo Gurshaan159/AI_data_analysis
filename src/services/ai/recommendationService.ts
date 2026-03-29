@@ -10,6 +10,7 @@ export async function recommendWorkflow(request: AIRecommendationRequest): Promi
       ? request.functionCatalog
       : buildPlannerFunctionCatalog(request.availablePipelines);
   const provider = getAIProvider();
+  // v1 boundary: provider outputs are never trusted directly; all results pass runtime+policy acceptance.
   const providerResult = (await provider.recommend({ ...request, functionCatalog })) as unknown;
   const acceptance = acceptProviderPlannerResult(providerResult, {
     availablePipelines: request.availablePipelines,

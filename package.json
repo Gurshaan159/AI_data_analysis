@@ -16,9 +16,11 @@
     "test:intent": "npm exec --yes tsx tests/frontend/intentExtractionCoverage.ts",
     "test:planner": "npm exec --yes tsx tests/frontend/scenarioVerification.ts",
     "test:summary": "npm exec --yes tsx tests/frontend/decisionSummaryCoverage.ts",
+    "test:trace": "npm exec --yes tsx tests/frontend/decisionTraceLoggingCoverage.ts",
     "test:approval-ui": "npm exec --yes tsx tests/frontend/approvalUiRenderingCoverage.tsx",
+    "test:unsupported-guidance": "npm exec --yes tsx tests/frontend/unsupportedGuidanceCoverage.tsx",
     "test:ai:smoke": "npm exec --yes tsx tests/frontend/assistedBrowserSmoke.tsx",
-    "test:ai": "npm run test:intent && npm run test:planner && npm run test:summary && npm run test:approval-ui && npm run test:ai:smoke",
+    "test:ai": "npm run test:intent && npm run test:planner && npm run test:summary && npm run test:trace && npm run test:approval-ui && npm run test:unsupported-guidance && npm run test:ai:smoke",
     "format": "prettier --write . && cargo fmt --manifest-path src-tauri/Cargo.toml --all",
     "format:check": "prettier --check . && cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check"
   },

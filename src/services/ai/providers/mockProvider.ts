@@ -1,12 +1,10 @@
 import { planWithBoundedCatalog } from "@/services/ai/planner/plannerBoundary";
 import { buildPlannerFunctionCatalog } from "@/services/ai/planner/functionCatalog";
-import type { AIProviderId } from "@/services/ai/config";
 import type { AIProvider, AIRecommendationRequest } from "@/services/ai/types";
 import type { AIRecommendationResult } from "@/shared/types";
 
 export class MockAIProvider implements AIProvider {
   readonly id = "mock" as const;
-  constructor(private readonly selectedProvider: AIProviderId) {}
 
   recommend(request: AIRecommendationRequest): Promise<AIRecommendationResult | null> {
     return Promise.resolve(
@@ -14,7 +12,7 @@ export class MockAIProvider implements AIProvider {
         userPrompt: request.userPrompt,
         availablePipelines: request.availablePipelines,
         functionCatalog: request.functionCatalog ?? buildPlannerFunctionCatalog(request.availablePipelines),
-        providerLabel: this.selectedProvider,
+        providerLabel: this.id,
       }),
     );
   }

@@ -3,6 +3,9 @@ import { RecommendationAdjustments } from "@/components/workflow/RecommendationA
 import { WorkflowDiagram } from "@/components/workflow/WorkflowDiagram";
 import type { SupportedDecisionSummary, SupportedRecommendationResult, UnsupportedDecisionSummary } from "@/shared/types";
 
+export const DEFAULT_UNSUPPORTED_NEXT_STEP_SUGGESTION =
+  "Simplify your request and try a supported matrix-based workflow.";
+
 interface SupportedDecisionPresentationProps {
   summary: SupportedDecisionSummary;
   recommendation: SupportedRecommendationResult;
@@ -105,6 +108,11 @@ interface UnsupportedDecisionPresentationProps {
 }
 
 export function UnsupportedDecisionPresentation({ summary }: UnsupportedDecisionPresentationProps) {
+  const nextStepSuggestions =
+    Array.isArray(summary.nextStepSuggestions) && summary.nextStepSuggestions.length > 0
+      ? summary.nextStepSuggestions
+      : [DEFAULT_UNSUPPORTED_NEXT_STEP_SUGGESTION];
+
   return (
     <>
       <p>
@@ -118,7 +126,7 @@ export function UnsupportedDecisionPresentation({ summary }: UnsupportedDecision
       ) : null}
       <strong>What you can do next</strong>
       <ul>
-        {summary.nextStepSuggestions.map((suggestion) => (
+        {nextStepSuggestions.map((suggestion) => (
           <li key={suggestion}>{suggestion}</li>
         ))}
       </ul>

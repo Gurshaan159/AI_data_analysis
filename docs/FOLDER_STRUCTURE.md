@@ -13,7 +13,7 @@
 │   ├── registry/                 # Frontend pipeline registry definitions
 │   ├── services/                 # Integration services (AI, execution, files, logging, settings)
 │   ├── shared/                   # Shared frontend type definitions
-│   ├── state/                    # Global app state scaffold
+│   ├── state/                    # Global app state
 │   └── styles/                   # Minimal global and app styles
 ├── src-tauri/                    # Rust backend/orchestration
 │   └── src/
@@ -25,8 +25,8 @@
 │       ├── lib.rs                # Tauri app setup + command wiring
 │       └── main.rs               # Binary entrypoint
 └── tests/
-    ├── backend/                  # Future backend tests
-    └── frontend/                 # Future frontend tests
+    ├── backend/                  # Backend test placeholders
+    └── frontend/                 # Frontend coverage and smoke tests
 ```
 
 ## Where to Add New Pipelines
@@ -38,7 +38,7 @@
 ## Where to Add AI Logic
 
 - Frontend recommendation orchestrator: `src/services/ai/recommendationService.ts`
-- Backend AI command/services can be added under `src-tauri/src/services/` if needed later.
+- AI v1 boundary/readiness note: `docs/AI_ASSISTED_V1_READINESS.md`
 
 ## Where to Add Execution Logic
 

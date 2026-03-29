@@ -4,6 +4,9 @@ import type {
   SupportedPlannerPipelineId,
 } from "@/shared/types";
 
+// v1 freeze boundary:
+// Add new planner-supported pipelines by extending SUPPORTED_PLANNER_PIPELINE_IDS
+// and introducing corresponding function entries and validator allowances together.
 const SUPPORTED_PLANNER_PIPELINE_IDS: SupportedPlannerPipelineId[] = [
   "count-matrix-analysis-v1",
   "bulk-rna-matrix-downstream-v1",

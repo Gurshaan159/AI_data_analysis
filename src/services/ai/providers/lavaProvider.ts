@@ -7,6 +7,7 @@ export class LavaAIProvider implements AIProvider {
   constructor(private readonly config: LavaProviderConfig) {}
 
   recommend(request: AIRecommendationRequest): Promise<AIRecommendationResult | null> {
+    // v1 boundary: keep provider contract shape stable; transport sophistication is a later extension.
     if (!request.userPrompt.trim()) {
       return Promise.resolve(null);
     }

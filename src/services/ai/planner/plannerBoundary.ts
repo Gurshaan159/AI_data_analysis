@@ -1,6 +1,7 @@
 import { buildWorkflowFromPipeline } from "@/domain/workflow/workflowFactory";
 import { extractPlannerIntentSignals } from "@/services/ai/intent/intentExtractor";
 import { summarizeIntentSignals } from "@/services/ai/intent/intentTypes";
+import { logPlannerDecisionTrace } from "@/services/ai/planner/decisionTraceLogger";
 import { getSupportedPlannerPipelineIds } from "@/services/ai/planner/functionCatalog";
 import type {
   AIRecommendationResult,
@@ -80,6 +81,8 @@ function buildUnsupportedResult(args: {
 
 
 function choosePipelineFromIntent(intent: PlannerIntentSignals): SupportedPlannerPipelineId {
+  // v1 boundary: only map into the two bounded matrix-first pipelines.
+  // Future families should be added through functionCatalog + validators together.
   if (
     intent.dataCharacteristics.expectsDimensionalityReduction ||
     intent.desiredOutputs.wantsPca ||
@@ -113,11 +116,21 @@ function ensureFunctionAllowed(
 }
 
 export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecommendationResult | null {
+  // Single planner boundary for AI-assisted v1.
+  // Keep UI and execution layers dependent on recommendation outputs, not planning internals.
   const intentExtraction = extractPlannerIntentSignals(request.userPrompt);
   if (!intentExtraction.normalizedPrompt) {
     return null;
   }
   const intent = intentExtraction.signals;
+  const withDecisionTrace = (result: AIRecommendationResult): AIRecommendationResult => {
+    logPlannerDecisionTrace({
+      providerLabel: request.providerLabel,
+      intent,
+      result,
+    });
+    return result;
+  };
 
   const plannerFunctionCalls: PlannerFunctionCall[] = [];
   const supportedPipelineIds = new Set(getSupportedPlannerPipelineIds());
@@ -133,14 +146,16 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
         reason: "No supported v1 planner pipelines are currently available in registry context.",
       },
     });
-    return buildUnsupportedResult({
+    return withDecisionTrace(
+      buildUnsupportedResult({
       providerLabel: request.providerLabel,
       summary: "No supported planner pipelines are available.",
       reason: "The current pipeline registry does not expose the v1 matrix analysis pipelines.",
       reasonCode: "supported-pipelines-unavailable",
       closestSupportedPipelineId: null,
       plannerFunctionCalls,
-    });
+      }),
+    );
   }
 
   if (intent.constraints.unsupportedAnalysisRequested) {
@@ -156,7 +171,8 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
       functionId: "suggest_closest_supported_workflow",
       arguments: { pipelineId: closest },
     });
-    return buildUnsupportedResult({
+    return withDecisionTrace(
+      buildUnsupportedResult({
       providerLabel: request.providerLabel,
       summary: "The request cannot be planned with currently supported workflows.",
       reason:
@@ -164,7 +180,8 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
       reasonCode: "outside-supported-universe",
       closestSupportedPipelineId: closest,
       plannerFunctionCalls,
-    });
+      }),
+    );
   }
 
   const chosenPipelineId = choosePipelineFromIntent(intent);
@@ -177,14 +194,16 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
         reason: `Selected pipeline ${chosenPipelineId} is not available in current registry context.`,
       },
     });
-    return buildUnsupportedResult({
+    return withDecisionTrace(
+      buildUnsupportedResult({
       providerLabel: request.providerLabel,
       summary: "Supported pipeline not currently available.",
       reason: `The planner selected ${chosenPipelineId}, but it is not present in available registry context.`,
       reasonCode: "supported-pipelines-unavailable",
       closestSupportedPipelineId: choosePipelineFromIntent(intent),
       plannerFunctionCalls,
-    });
+      }),
+    );
   }
 
   const selectFunctionId =
@@ -405,5 +424,5 @@ export function planWithBoundedCatalog(request: PlannerBoundaryRequest): AIRecom
     },
   };
 
-  return result;
+  return withDecisionTrace(result);
 }

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { JSDOM } from "jsdom";
 
 import {
+  DEFAULT_UNSUPPORTED_NEXT_STEP_SUGGESTION,
   SupportedDecisionPresentation,
   UnsupportedDecisionPresentation,
 } from "@/components/workflow/AssistedDecisionPresentation";
@@ -237,7 +238,7 @@ function runSparseUnsupportedSmokeScenario(): ScenarioResult {
     ...summary,
     closestSupportedWorkflowLabel: null,
     fallbackResources: [],
-    nextStepSuggestions: [summary.nextStepSuggestions[0] ?? "Reframe to a supported workflow."],
+    nextStepSuggestions: [],
   };
 
   const dom = setupDom();
@@ -267,7 +268,7 @@ function runSparseUnsupportedSmokeScenario(): ScenarioResult {
     sparseSummary.unsupportedReasonDetail,
     "What you can do next",
     "Fallback resources",
-    sparseSummary.nextStepSuggestions[0],
+    DEFAULT_UNSUPPORTED_NEXT_STEP_SUGGESTION,
   ];
   const missing = requiredTokens.filter((token) => !text.includes(token));
   const hidesClosestWhenMissing = !text.includes("Closest supported workflow:");

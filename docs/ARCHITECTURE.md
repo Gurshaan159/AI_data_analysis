@@ -30,13 +30,13 @@
 - `src-tauri/src/pipelines/` pipeline registry + future adapters
 - `src-tauri/src/shared/` serialized domain structures
 
-## AI Recommendation Strategy (Scaffold)
+## AI Recommendation Strategy (v1 Frozen Boundary)
 
-- Current: mocked recommendation service (`src/services/ai/recommendationService.ts`)
-- Planned providers:
-  - local rule-based recommendation
-  - Lava API backed LLM recommendation
-  - fallback literature/resource suggestions when unsupported
+- AI planner entrypoint: `src/services/ai/recommendationService.ts` -> `planWithBoundedCatalog`.
+- Provider outputs are normalized through runtime + policy acceptance before entering UI state.
+- Supported planner universe is intentionally bounded to matrix-first count and bulk-RNA matrix-downstream workflows.
+- Decision trace logging is emitted centrally from planner boundary (`ai.planner.decision_trace`).
+- v1 scope and extension points are documented in `docs/AI_ASSISTED_V1_READINESS.md`.
 
 ## Execution Strategy (Scaffold)
 

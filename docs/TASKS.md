@@ -1,6 +1,6 @@
 # Foundation Tasks
 
-## Completed in this Scaffold
+## Completed Foundation Work
 
 - [x] Tauri v2 + React + TypeScript + Vite initialization
 - [x] Strict TypeScript config with path aliases
@@ -8,12 +8,12 @@
 - [x] Rust lint/format readiness (`clippy`, `rustfmt`)
 - [x] Frontend page skeleton for all required steps
 - [x] App-level state model for workflow selection and approval
-- [x] Frontend pipeline registry scaffold
-- [x] Frontend AI recommendation mock scaffold
-- [x] Rust command/services/pipeline module scaffold
+- [x] Frontend pipeline registry
+- [x] Frontend AI recommendation and validation boundary
+- [x] Rust command/services/pipeline module foundation
 - [x] Python support directory for wrappers
 
-## Next Implementation Tasks
+## Deferred / Next Implementation Tasks
 
 1. Implement real file/folder dialog command behavior in Rust.
 2. Persist app settings through Rust-side config storage.
