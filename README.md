@@ -46,9 +46,11 @@ No real bioinformatics tools are implemented yet. This is an extensible foundati
 
 ## Environment Variables
 
-- `VITE_AI_PROVIDER` - main AI provider selector (`mock` by default, switch to `lava` later without UI code changes)
-- `VITE_LAVA_API_BASE_URL` - optional Lava endpoint base URL (used by Lava stub/config)
-- `VITE_LAVA_API_KEY` - optional Lava API key placeholder for future integration
+- `VITE_OPENAI_API_KEY` - OpenAI API key. The AI-assisted flow calls the **OpenAI Chat Completions API** directly (Bearer auth to `VITE_OPENAI_CHAT_COMPLETIONS_URL`). When this (or the legacy name below) is set, the app uses the OpenAI-backed planner by default.
+- `VITE_LAVA_API_KEY` - **legacy alias** for `VITE_OPENAI_API_KEY` only (same direct OpenAI behavior; it does **not** call lava.so).
+- `VITE_AI_PROVIDER` - optional: `mock` forces offline planning; `openai` / `lava` require a non-empty key as above.
+- `VITE_OPENAI_CHAT_COMPLETIONS_URL` - optional; defaults to `https://api.openai.com/v1/chat/completions`. Legacy `VITE_LAVA_CHAT_COMPLETIONS_URL` is used if this is unset.
+- `VITE_OPENAI_MODEL` - optional; defaults to `gpt-4o-mini`. Legacy `VITE_LAVA_MODEL` is used if this is unset.
 
 ## Where To Extend
 

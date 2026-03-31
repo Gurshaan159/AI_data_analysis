@@ -1,7 +1,7 @@
 import { getPipelineRegistry } from "@/registry/pipelineRegistry";
 import { buildPlannerFunctionCatalog } from "@/services/ai/planner/functionCatalog";
 import { acceptProviderPlannerResult } from "@/services/ai/planner/resultAcceptance";
-import { LavaAIProvider } from "@/services/ai/providers/lavaProvider";
+import { OpenAIProvider } from "@/services/ai/providers/openaiProvider";
 
 interface ScenarioResult {
   name: string;
@@ -23,7 +23,7 @@ function mockFetchJson(payload: unknown): typeof fetch {
     })) as typeof fetch;
 }
 
-async function runLavaProviderContract(): Promise<void> {
+async function runOpenAiProviderContract(): Promise<void> {
   const availablePipelines = getPipelineRegistry();
   const functionCatalog = buildPlannerFunctionCatalog(availablePipelines);
   const originalFetch = globalThis.fetch;
@@ -46,9 +46,8 @@ async function runLavaProviderContract(): Promise<void> {
     ],
   });
 
-  const provider = new LavaAIProvider({
-    baseUrl: "https://api.lava.so/v1",
-    apiKey: "aks_test_placeholder",
+  const provider = new OpenAIProvider({
+    apiKey: "sk-test-placeholder",
     chatCompletionsUrl: "https://api.openai.com/v1/chat/completions",
     model: "gpt-4o-mini",
   });
@@ -63,11 +62,11 @@ async function runLavaProviderContract(): Promise<void> {
   const acceptance = acceptProviderPlannerResult(result as unknown, {
     availablePipelines,
     functionCatalog,
-    providerLabel: "lava",
+    providerLabel: "openai",
   });
 
   logScenarioResult({
-    name: "Lava mocked gateway returns materialized supported result passing acceptance",
+    name: "OpenAI mocked API returns materialized supported result passing acceptance",
     pass:
       result?.kind === "supported" &&
       result.chosenPipelineId === "count-matrix-analysis-v1" &&
@@ -75,9 +74,7 @@ async function runLavaProviderContract(): Promise<void> {
     detail: `kind=${result?.kind ?? "null"}, accepted=${acceptance.accepted}`,
   });
 
-  // Missing API key
-  const providerNoKey = new LavaAIProvider({
-    baseUrl: "https://api.lava.so/v1",
+  const providerNoKey = new OpenAIProvider({
     apiKey: null,
     chatCompletionsUrl: "https://api.openai.com/v1/chat/completions",
     model: "gpt-4o-mini",
@@ -88,7 +85,7 @@ async function runLavaProviderContract(): Promise<void> {
     userPrompt: "count matrix and metadata for DE",
   });
   logScenarioResult({
-    name: "Missing Lava API key returns typed unsupported transport result",
+    name: "Missing OpenAI API key returns typed unsupported transport result",
     pass:
       noKeyResult?.kind === "unsupported" &&
       noKeyResult.unsupportedReasonCode === "provider-not-configured",
@@ -112,10 +109,10 @@ async function runLavaProviderContract(): Promise<void> {
   const bulkAcceptance = acceptProviderPlannerResult(bulkResult as unknown, {
     availablePipelines,
     functionCatalog,
-    providerLabel: "lava",
+    providerLabel: "openai",
   });
   logScenarioResult({
-    name: "Lava mocked bulk downstream materialization passes acceptance",
+    name: "OpenAI mocked bulk downstream materialization passes acceptance",
     pass:
       bulkResult?.kind === "supported" &&
       bulkResult.chosenPipelineId === "bulk-rna-matrix-downstream-v1" &&
@@ -169,7 +166,7 @@ async function runLavaProviderContract(): Promise<void> {
     const policyAcceptance = acceptProviderPlannerResult(policyBroken as unknown, {
       availablePipelines,
       functionCatalog,
-      providerLabel: "lava",
+      providerLabel: "openai",
     });
     logScenarioResult({
       name: "Policy-invalid shaped supported result is blocked at acceptance boundary",
@@ -185,4 +182,4 @@ async function runLavaProviderContract(): Promise<void> {
   }
 }
 
-void runLavaProviderContract();
+void runOpenAiProviderContract();

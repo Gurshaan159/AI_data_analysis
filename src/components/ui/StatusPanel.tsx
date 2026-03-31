@@ -6,8 +6,9 @@ interface StatusPanelProps {
 }
 
 export function StatusPanel({ title, tone = "neutral", children }: PropsWithChildren<StatusPanelProps>) {
+  const toneClass = tone === "neutral" ? "status-panel-neutral" : `status-panel-${tone}`;
   return (
-    <section className={`status-panel status-panel-${tone}`}>
+    <section className={`status-panel ${toneClass}`}>
       <h3>{title}</h3>
       <div>{children}</div>
     </section>

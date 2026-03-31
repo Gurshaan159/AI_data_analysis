@@ -21,14 +21,16 @@
     "test:unsupported-guidance": "npm exec --yes tsx tests/frontend/unsupportedGuidanceCoverage.tsx",
     "test:ai:smoke": "npm exec --yes tsx tests/frontend/assistedBrowserSmoke.tsx",
     "test:file-kinds": "npm exec --yes tsx tests/frontend/fileKindInference.ts",
-    "test:lava": "npm exec --yes tsx tests/frontend/lavaProviderContract.ts",
-    "test:ai": "npm run test:intent && npm run test:planner && npm run test:summary && npm run test:trace && npm run test:approval-ui && npm run test:unsupported-guidance && npm run test:ai:smoke && npm run test:lava",
+    "test:openai:contract": "npm exec --yes tsx tests/frontend/openaiProviderContract.ts",
+    "test:openai:e2e": "npm exec --yes tsx tests/frontend/openaiAssistedFlowsE2e.ts",
+    "test:ai": "npm run test:intent && npm run test:planner && npm run test:summary && npm run test:trace && npm run test:approval-ui && npm run test:unsupported-guidance && npm run test:ai:smoke && npm run test:openai:contract",
     "format": "prettier --write . && cargo fmt --manifest-path src-tauri/Cargo.toml --all",
     "format:check": "prettier --check . && cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-http": "^2.5.7",
     "@tauri-apps/plugin-opener": "^2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
@@ -40,6 +42,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "dotenv": "^17.3.1",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.0.1",

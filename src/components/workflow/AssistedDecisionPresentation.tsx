@@ -1,3 +1,4 @@
+import { AiProviderAttribution } from "@/components/workflow/AiProviderAttribution";
 import { ApprovalChecklist } from "@/components/workflow/ApprovalChecklist";
 import { RecommendationAdjustments } from "@/components/workflow/RecommendationAdjustments";
 import { WorkflowDiagram } from "@/components/workflow/WorkflowDiagram";
@@ -28,6 +29,7 @@ export function SupportedDecisionPresentation({
         <p>
           <strong>Selected pipeline:</strong> {summary.chosenPipelineLabel}
         </p>
+        <AiProviderAttribution />
       </section>
 
       <div className="approval-summary-grid">
@@ -105,9 +107,11 @@ export function SupportedDecisionPresentation({
 
 interface UnsupportedDecisionPresentationProps {
   summary: UnsupportedDecisionSummary;
+  /** Short user-facing setup line (e.g. bounded unsupported vs provider issues are handled elsewhere). */
+  leadUserMessage?: string;
 }
 
-export function UnsupportedDecisionPresentation({ summary }: UnsupportedDecisionPresentationProps) {
+export function UnsupportedDecisionPresentation({ summary, leadUserMessage }: UnsupportedDecisionPresentationProps) {
   const nextStepSuggestions =
     Array.isArray(summary.nextStepSuggestions) && summary.nextStepSuggestions.length > 0
       ? summary.nextStepSuggestions
@@ -115,6 +119,7 @@ export function UnsupportedDecisionPresentation({ summary }: UnsupportedDecision
 
   return (
     <>
+      {leadUserMessage ? <p className="ai-decision-lead">{leadUserMessage}</p> : null}
       <p>
         <strong>{summary.title}:</strong> {summary.unsupportedSummary}
       </p>
@@ -147,6 +152,7 @@ export function UnsupportedDecisionPresentation({ summary }: UnsupportedDecision
           </li>
         ))}
       </ul>
+      <AiProviderAttribution />
     </>
   );
 }

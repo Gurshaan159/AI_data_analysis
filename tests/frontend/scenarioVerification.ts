@@ -222,7 +222,7 @@ async function runVerificationScenarios() {
   const lavaAcceptance = acceptProviderPlannerResult(lavaStyleUnsupported, {
     availablePipelines,
     functionCatalog,
-    providerLabel: "lava",
+    providerLabel: "openai",
   });
   logScenarioResult({
     name: "Scenario8 future lava-style provider payload passes same validated boundary",

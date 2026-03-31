@@ -200,4 +200,11 @@ export interface UnsupportedDecisionSummary {
 export type AIDecisionSummary = SupportedDecisionSummary | UnsupportedDecisionSummary;
 
 export type AIRecommendationResult = SupportedRecommendationResult | UnsupportedRecommendationResult;
-export type AIRecommendationStatus = "idle" | "loading" | "supported" | "unsupported" | "error";
+export type AIRecommendationStatus =
+  | "idle"
+  | "loading"
+  | "supported"
+  | "unsupported"
+  | "planner_guardrail"
+  | "provider_error"
+  | "error";

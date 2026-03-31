@@ -1,9 +1,8 @@
 import { appEnv } from "@/config/env";
 
-export type AIProviderId = "mock" | "lava";
+export type AIProviderId = "mock" | "openai";
 
-export interface LavaProviderConfig {
-  baseUrl: string;
+export interface OpenAIProviderConfig {
   apiKey: string | null;
   chatCompletionsUrl: string;
   model: string;
@@ -11,17 +10,31 @@ export interface LavaProviderConfig {
 
 export interface AIProviderConfig {
   provider: AIProviderId;
-  lava: LavaProviderConfig;
+  openai: OpenAIProviderConfig;
 }
 
+let loggedProviderConfigOnce = false;
+
 export function getAIProviderConfig(): AIProviderConfig {
-  return {
+  const result: AIProviderConfig = {
     provider: appEnv.aiProvider,
-    lava: {
-      baseUrl: appEnv.lavaApiBaseUrl,
-      apiKey: appEnv.lavaApiKey,
-      chatCompletionsUrl: appEnv.lavaChatCompletionsUrl,
-      model: appEnv.lavaModel,
+    openai: {
+      apiKey: appEnv.openaiApiKey,
+      chatCompletionsUrl: appEnv.openaiChatCompletionsUrl,
+      model: appEnv.openaiModel,
     },
   };
+
+  if (import.meta.env?.DEV && !loggedProviderConfigOnce) {
+    loggedProviderConfigOnce = true;
+    const k = result.openai.apiKey;
+    console.debug("[ai-provider-config]", {
+      provider: result.provider,
+      openaiKeyPresent: k != null && k.trim().length > 0,
+      openaiKeyLength: k?.trim().length ?? 0,
+      chatUrl: result.openai.chatCompletionsUrl,
+    });
+  }
+
+  return result;
 }

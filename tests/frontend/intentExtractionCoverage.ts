@@ -141,6 +141,15 @@ const intentFixtures: IntentFixture[] = [
     },
   },
   {
+    name: "FASTQ files phrasing is flagged unsupported (bounded universe)",
+    prompt: "I have FASTQ files and want a full RNA-seq pipeline.",
+    expected: {
+      constraints: {
+        unsupportedAnalysisRequested: true,
+      },
+    },
+  },
+  {
     name: "Ambiguous supportable matrix wording stays supported-oriented",
     prompt: "I have an expression matrix and need to compare groups with a clean visualization summary.",
     expected: {
@@ -175,6 +184,12 @@ const plannerFixtures: PlannerFixture[] = [
   {
     name: "Unsupported request remains unsupported in planner",
     prompt: "Need single-cell clustering and marker genes from droplet data.",
+    expectedKind: "unsupported",
+    expectedUnsupportedReason: "outside-supported-universe",
+  },
+  {
+    name: "FASTQ pipeline request stays unsupported in bounded planner",
+    prompt: "I have FASTQ files and want a full RNA-seq pipeline.",
     expectedKind: "unsupported",
     expectedUnsupportedReason: "outside-supported-universe",
   },

@@ -1,39 +1,41 @@
-import type { LavaProviderConfig } from "@/services/ai/config";
 import { extractJsonTextFromAssistantMessage, parseUnknownJson, textFromAssistantContent } from "@/services/ai/providers/lavaMessageParser";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export interface LavaChatCompletionConfig {
-  /** Lava API base, e.g. https://api.lava.so/v1 */
-  apiBaseUrl: string;
-  /** Lava merchant secret key (aks_live_...) */
+export interface OpenAiChatCompletionConfig {
   apiKey: string;
-  /** Upstream OpenAI-compatible chat completions URL (forward target). */
   chatCompletionsUrl: string;
   model: string;
 }
 
-export type LavaChatCompletionResult =
+export type OpenAiChatCompletionResult =
   | { ok: true; rawJson: unknown }
   | { ok: false; errorMessage: string; status?: number };
 
-function normalizeBaseUrl(base: string): string {
-  return base.replace(/\/$/, "");
+let cachedTauriHttpFetch: typeof fetch | undefined;
+
+/** Tauri WebView enforces browser CORS on `globalThis.fetch`; plugin-http runs via Rust and avoids that. */
+async function getHttpFetch(): Promise<typeof fetch> {
+  if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+    if (!cachedTauriHttpFetch) {
+      const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
+      cachedTauriHttpFetch = tauriFetch;
+    }
+    return cachedTauriHttpFetch;
+  }
+  return globalThis.fetch.bind(globalThis);
 }
 
-/**
- * POST ${apiBaseUrl}/forward?u=<encoded upstream chat completions URL>
- * Authorization: Bearer <Lava secret key>
- */
-export async function requestLavaChatCompletionJson(args: {
-  config: LavaChatCompletionConfig;
+/** POST OpenAI-compatible chat completions; parses assistant JSON object output. */
+export async function requestOpenAiChatCompletionJson(args: {
+  config: OpenAiChatCompletionConfig;
   systemPrompt: string;
   userPrompt: string;
-}): Promise<LavaChatCompletionResult> {
+}): Promise<OpenAiChatCompletionResult> {
   const { config } = args;
-  const forwardUrl = `${normalizeBaseUrl(config.apiBaseUrl)}/forward?u=${encodeURIComponent(config.chatCompletionsUrl)}`;
+  const url = config.chatCompletionsUrl.replace(/\/$/, "");
   const body = {
     model: config.model,
     temperature: 0.2,
@@ -44,13 +46,14 @@ export async function requestLavaChatCompletionJson(args: {
     ],
   };
 
+  const httpFetch = await getHttpFetch();
   let response: Response;
   try {
-    response = await fetch(forwardUrl, {
+    response = await httpFetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${config.apiKey}`,
+        Authorization: `Bearer ${config.apiKey.trim()}`,
       },
       body: JSON.stringify(body),
     });
@@ -68,7 +71,7 @@ export async function requestLavaChatCompletionJson(args: {
     return {
       ok: false,
       status: response.status,
-      errorMessage: "Lava response was not valid JSON.",
+      errorMessage: "OpenAI response was not valid JSON.",
     };
   }
 
@@ -76,7 +79,7 @@ export async function requestLavaChatCompletionJson(args: {
     const errMsg =
       isRecord(payload) && isRecord(payload.error) && typeof payload.error.message === "string"
         ? payload.error.message
-        : `Lava gateway error (${response.status})`;
+        : `OpenAI API error (${response.status})`;
     return {
       ok: false,
       status: response.status,
@@ -89,7 +92,7 @@ export async function requestLavaChatCompletionJson(args: {
     return {
       ok: false,
       status: response.status,
-      errorMessage: "Lava response missing assistant message content.",
+      errorMessage: "OpenAI response missing assistant message content.",
     };
   }
 
@@ -126,13 +129,4 @@ function extractAssistantContent(payload: unknown): string | null {
   }
   const text = textFromAssistantContent(message.content);
   return text.trim() ? text : null;
-}
-
-export function lavaChatConfigFromEnv(config: LavaProviderConfig, overrides: { chatCompletionsUrl: string; model: string }): LavaChatCompletionConfig {
-  return {
-    apiBaseUrl: config.baseUrl,
-    apiKey: config.apiKey ?? "",
-    chatCompletionsUrl: overrides.chatCompletionsUrl,
-    model: overrides.model,
-  };
 }

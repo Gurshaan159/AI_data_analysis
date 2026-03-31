@@ -1,19 +1,19 @@
 import { extractPlannerIntentSignals } from "@/services/ai/intent/intentExtractor";
+import type { OpenAIProviderConfig } from "@/services/ai/config";
 import { buildPlannerFunctionCatalog } from "@/services/ai/planner/functionCatalog";
 import { planWithBoundedCatalog } from "@/services/ai/planner/plannerBoundary";
-import type { LavaProviderConfig } from "@/services/ai/config";
 import { buildLavaSystemPrompt, buildLavaUserPrompt } from "@/services/ai/providers/lavaBoundedPrompt";
-import { lavaChatConfigFromEnv, requestLavaChatCompletionJson } from "@/services/ai/providers/lavaChatCompletion";
 import { materializeLavaSupportedRecommendation } from "@/services/ai/providers/lavaMaterializeSupported";
 import { materializeLavaUnsupportedRecommendation } from "@/services/ai/providers/lavaMaterializeUnsupported";
 import { parseLavaModelPayload } from "@/services/ai/providers/lavaParseModel";
-import { buildLavaTransportUnsupportedResult } from "@/services/ai/providers/lavaTransportFailure";
+import { requestOpenAiChatCompletionJson } from "@/services/ai/providers/openaiChatCompletion";
+import { buildOpenAiTransportUnsupportedResult } from "@/services/ai/providers/openaiTransportFailure";
 import type { AIProvider, AIRecommendationRequest } from "@/services/ai/types";
 import type { AIRecommendationResult } from "@/shared/types";
 
-export class LavaAIProvider implements AIProvider {
-  readonly id = "lava" as const;
-  constructor(private readonly config: LavaProviderConfig) {}
+export class OpenAIProvider implements AIProvider {
+  readonly id = "openai" as const;
+  constructor(private readonly config: OpenAIProviderConfig) {}
 
   recommend(request: AIRecommendationRequest): Promise<AIRecommendationResult | null> {
     if (!request.userPrompt.trim()) {
@@ -25,22 +25,24 @@ export class LavaAIProvider implements AIProvider {
         ? request.functionCatalog
         : buildPlannerFunctionCatalog(request.availablePipelines);
 
-    if (!this.config.baseUrl.trim()) {
+    if (!this.config.chatCompletionsUrl.trim()) {
       return Promise.resolve(
-        buildLavaTransportUnsupportedResult({
+        buildOpenAiTransportUnsupportedResult({
           reasonCode: "provider-not-configured",
-          summary: "Lava gateway base URL is not configured.",
-          reason: "Set VITE_LAVA_API_BASE_URL to your Lava API base (for example https://api.lava.so/v1).",
+          summary: "OpenAI chat URL is not configured.",
+          reason:
+            "Set VITE_OPENAI_CHAT_COMPLETIONS_URL (default https://api.openai.com/v1/chat/completions) or your compatible endpoint.",
         }),
       );
     }
 
     if (!this.config.apiKey?.trim()) {
       return Promise.resolve(
-        buildLavaTransportUnsupportedResult({
+        buildOpenAiTransportUnsupportedResult({
           reasonCode: "provider-not-configured",
-          summary: "Lava API key is not configured.",
-          reason: "Set VITE_LAVA_API_KEY to your Lava merchant secret key.",
+          summary: "OpenAI API key is not configured.",
+          reason:
+            "Set VITE_OPENAI_API_KEY (or legacy VITE_LAVA_API_KEY) in the project root .env on the same line as the key, no quotes. Restart the dev server.",
         }),
       );
     }
@@ -57,38 +59,37 @@ export class LavaAIProvider implements AIProvider {
       );
     }
 
-    const chatConfig = lavaChatConfigFromEnv(this.config, {
-      chatCompletionsUrl: this.config.chatCompletionsUrl,
-      model: this.config.model,
-    });
-
     const systemPrompt = buildLavaSystemPrompt({ ...request, functionCatalog });
     const userPrompt = buildLavaUserPrompt(request.userPrompt);
 
-    return requestLavaChatCompletionJson({
-      config: chatConfig,
+    return requestOpenAiChatCompletionJson({
+      config: {
+        apiKey: this.config.apiKey.trim(),
+        chatCompletionsUrl: this.config.chatCompletionsUrl.trim(),
+        model: this.config.model.trim(),
+      },
       systemPrompt,
       userPrompt,
     }).then((completion) => {
       if (!completion.ok) {
-        return buildLavaTransportUnsupportedResult({
+        return buildOpenAiTransportUnsupportedResult({
           reasonCode: "provider-request-failed",
-          summary: "Lava gateway request did not return a usable planner response.",
+          summary: "OpenAI did not return a usable planner response.",
           reason: completion.errorMessage,
         });
       }
 
       const parsed = parseLavaModelPayload(completion.rawJson);
       if (!parsed) {
-        return buildLavaTransportUnsupportedResult({
+        return buildOpenAiTransportUnsupportedResult({
           reasonCode: "provider-request-failed",
-          summary: "Lava model output could not be parsed as a bounded planner decision.",
+          summary: "Model output could not be parsed as a bounded planner decision.",
           reason: "The assistant response was not a valid supported/unsupported planner JSON object.",
         });
       }
 
       if (parsed.kind === "unsupported") {
-        return materializeLavaUnsupportedRecommendation(parsed);
+        return materializeLavaUnsupportedRecommendation(parsed, { providerLabel: this.id });
       }
 
       const supported = materializeLavaSupportedRecommendation({
@@ -96,11 +97,12 @@ export class LavaAIProvider implements AIProvider {
         availablePipelines: request.availablePipelines,
         functionCatalog,
         model: parsed,
+        providerLabel: this.id,
       });
       if (!supported) {
-        return buildLavaTransportUnsupportedResult({
+        return buildOpenAiTransportUnsupportedResult({
           reasonCode: "provider-request-failed",
-          summary: "Lava supported decision could not be materialized against the pipeline registry.",
+          summary: "Supported planner decision could not be materialized against the pipeline registry.",
           reason: "The model chose a pipeline or options that are not available in the current registry context.",
         });
       }

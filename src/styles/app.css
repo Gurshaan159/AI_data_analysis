@@ -136,6 +136,38 @@
   background: #f3fcf7;
 }
 
+.status-panel-error {
+  border-color: #e07a7a;
+  background: #fff8f8;
+}
+
+.ai-provider-attribution {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  color: #5a6578;
+}
+
+.ai-loading-hint {
+  margin: 0 0 0.35rem;
+}
+
+.ai-loading-subtle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #5a6578;
+}
+
+.ai-decision-lead {
+  margin-top: 0;
+  font-weight: 500;
+}
+
+.ai-decision-muted {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+  color: #3d4a5f;
+}
+
 .prompt-box {
   width: 100%;
   resize: vertical;

@@ -66,7 +66,10 @@ export function materializeLavaSupportedRecommendation(args: {
   availablePipelines: PipelineDefinition[];
   functionCatalog: PlannerFunctionCatalogEntry[];
   model: LavaModelSupportedPayload;
+  /** Logged in traces and reflected in recommendation id prefix; default `openai`. */
+  providerLabel?: string;
 }): SupportedRecommendationResult | null {
+  const providerLabel = args.providerLabel ?? "openai";
   const intentExtraction = extractPlannerIntentSignals(args.userPrompt);
   const intent = intentExtraction.signals;
   const chosenPipelineId = args.model.chosenPipelineId;
@@ -137,7 +140,7 @@ export function materializeLavaSupportedRecommendation(args: {
         required: false,
         skippedByAi: true,
         modifiedByAi: true,
-        explanation: `${steps[idx].explanation} Skipped per Lava planner output.`,
+        explanation: `${steps[idx].explanation} Skipped per model planner output.`,
       };
       steps[idx] = skipped;
       skippedSteps.push(skipped);
@@ -211,7 +214,7 @@ export function materializeLavaSupportedRecommendation(args: {
 
   pushCall(plannerFunctionCalls, {
     functionId: "explain_pipeline_choice",
-    arguments: { pipelineId: chosenPipelineId, reason: `Lava planner selected ${pipeline.displayName} within bounded scope.` },
+    arguments: { pipelineId: chosenPipelineId, reason: `Planner selected ${pipeline.displayName} within bounded scope.` },
   });
   pushCall(plannerFunctionCalls, {
     functionId: "explain_added_step",
@@ -223,7 +226,7 @@ export function materializeLavaSupportedRecommendation(args: {
       id: "pipeline-choice",
       kind: "pipeline-choice",
       title: "Pipeline choice",
-      detail: `Selected ${pipeline.displayName} from bounded v1 planner scope using Lava-assisted planning.`,
+      detail: `Selected ${pipeline.displayName} from bounded v1 planner scope using AI-assisted planning.`,
       sourceFunctionId: "explain_pipeline_choice",
     },
     {
@@ -287,14 +290,14 @@ export function materializeLavaSupportedRecommendation(args: {
 
   const assumptions: string[] = [
     "Planner is constrained to count-matrix-analysis-v1 and bulk-rna-matrix-downstream-v1.",
-    "Lava output was materialized against the registered pipeline definitions before acceptance validation.",
-    `Planner output generated through ${"lava"} provider boundary.`,
+    "Model output was materialized against the registered pipeline definitions before acceptance validation.",
+    `Planner output generated through ${providerLabel} provider boundary.`,
     ...(args.model.assumptions ?? []),
   ];
 
   const result: SupportedRecommendationResult = {
     kind: "supported",
-    recommendationId: recommendationId("lava-supported"),
+    recommendationId: recommendationId(`${providerLabel}-supported`),
     chosenPipelineId,
     plannerFunctionCalls,
     workflowProposal: plannedWorkflow,
@@ -323,7 +326,7 @@ export function materializeLavaSupportedRecommendation(args: {
   };
 
   logPlannerDecisionTrace({
-    providerLabel: "lava",
+    providerLabel,
     intent: intentExtraction.signals,
     result,
   });

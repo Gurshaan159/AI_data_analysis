@@ -11,6 +11,10 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
+  // Pin root + env dir to this file's folder so `.env` loads even if the Vite process cwd differs
+  // (e.g. some `tauri dev` / tooling setups start the dev server from another directory).
+  root: path.resolve(__dirname),
+  envDir: path.resolve(__dirname),
   plugins: [react()],
   resolve: {
     alias: {

@@ -5,7 +5,11 @@ function recommendationId(prefix: string): string {
   return `${prefix}-${Date.now()}`;
 }
 
-export function materializeLavaUnsupportedRecommendation(model: LavaModelUnsupportedPayload): UnsupportedRecommendationResult {
+export function materializeLavaUnsupportedRecommendation(
+  model: LavaModelUnsupportedPayload,
+  options?: { providerLabel?: string },
+): UnsupportedRecommendationResult {
+  const providerLabel = options?.providerLabel ?? "openai";
   const plannerFunctionCalls: PlannerFunctionCall[] = [
     {
       functionId: "detect_unsupported_request",
@@ -24,7 +28,7 @@ export function materializeLavaUnsupportedRecommendation(model: LavaModelUnsuppo
 
   const defaultExplanations: UnsupportedRecommendationResult["explanations"] = [
     {
-      id: "lava-unsupported-fallback",
+      id: "planner-unsupported-fallback",
       kind: "fallback",
       title: "Unsupported request",
       detail: model.reason,
@@ -36,14 +40,14 @@ export function materializeLavaUnsupportedRecommendation(model: LavaModelUnsuppo
 
   return {
     kind: "unsupported",
-    recommendationId: recommendationId("lava-unsupported"),
+    recommendationId: recommendationId(`${providerLabel}-unsupported`),
     unsupportedReasonCode: model.unsupportedReasonCode,
     summary: model.summary,
     reason: model.reason,
     closestSupportedPipelineId: model.closestSupportedPipelineId,
     plannerFunctionCalls,
     explanations,
-    warnings: model.warnings ?? ["Lava classified this request as outside the supported planner universe."],
+    warnings: model.warnings ?? ["This request was classified as outside the supported planner universe."],
     assumptions: model.assumptions ?? ["Only bounded v1 planner pipelines may be recommended."],
     suggestedResources: [
       {
